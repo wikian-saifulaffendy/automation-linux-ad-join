@@ -44,7 +44,7 @@
 
     - name: Update the Krb5 configuration
       copy:
-        src: krb5.conf
+        src: testfolder/krb5.conf
         dest: /etc/krb5.conf
         mode: "0644"
 
@@ -81,19 +81,19 @@
 
     - name: Modify SSSD Configuration
       copy:
-        src: sssd.conf
+        src: testfolder/sssd.conf
         dest: /etc/sssd/sssd.conf
         mode: "0600"
 
     - name: Modify ldap Configuration
       copy:
-        src: ldap.conf_suse
+        src: testfolder/ldap.conf_suse
         dest: /etc/openldap/ldap.conf
         mode: "0644"
 
     - name: Copy LDAP CERT
       copy:
-        src: LDAPS_CERT8.cer
+        src: testfolder/LDAPS_CERT8.cer
         dest: /etc/openldap/
 
 
