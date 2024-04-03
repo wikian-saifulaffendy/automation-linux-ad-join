@@ -1,1 +1,105 @@
 
+---
+- name: Detect and Execute OS-specific tasks
+  hosts: all
+  gather_facts: no
+  vars:
+    domain_name: wikilab.asia
+    username: "sainath"
+    password: "Redhat123"
+  tasks:
+    - name: Get Current Date and Time
+      shell: date "+%d-%m_%Y-%H:%M:%S"
+      register: current_datetime
+      delegate_to: localhost
+
+    - name: Determine SUSE version
+      #shell: cat /etc/os-release | grep '^VERSION_ID=' | awk -F= '{print $2}' | tr -d '"'
+      #shell: lsb_release -d |awk '{print $6}'
+      shell: hostnamectl |grep "Operating System"|awk '{print $7}'
+      register: suse_version_output
+
+    - name: Set SUSE version fact
+      set_fact:
+        suse_version: "{{ suse_version_output.stdout }}"
+
+    - name: Print SUSE version
+      debug:
+        var: suse_version
+
+#Install necessary packages
+    - name: Install realm package along with sssd
+      command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools realmd
+      ignore_errors: yes
+
+    - name: Copy realm RPM file to temporary directory
+      copy:
+        src: realmd-0.16.3-lp151.2.4.x86_64.rpm
+        dest: /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+      when: suse_version == '12'
+
+    - name: Install realm RPM using rpm command
+      command: rpm -ivh /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+      when: suse_version == '12'
+
+    - name: Update the Krb5 configuration
+      copy:
+        src: krb5.conf
+        dest: /etc/krb5.conf
+        mode: "0644"
+
+    - name: Join domain (SUSE 12 and 15)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+      no_log: True
+      when: suse_version == 15
+
+    - name: Take a backup of the original nsswitch.conf file
+      copy:
+        src: /etc/nsswitch.conf
+        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
+        remote_src: yes
+        backup: yes
+
+    - name: Update configuration file
+      ansible.builtin.replace:
+        path: /etc/nsswitch.conf
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop:
+        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+        - { regexp: '^group:.*', replace: 'group: compact sss' }
+        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
+
+    # - name: Update configuration file
+    #   lineinfile:
+    #     path: /etc/nsswitch.conf
+    #     regexp: '^(passwd:|group:|shadow:)\s+\w*'  # Match lines for passwd, group, shadow
+    #     line: '\1 compat sss'                      # Append 'sss'
+    #     backrefs: true                            # Preserve existing content
+
+    - name: Modify SSSD Configuration
+      copy:
+        src: sssd.conf
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+
+    - name: Modify ldap Configuration
+      copy:
+        src: ldap.conf_suse
+        dest: /etc/openldap/ldap.conf
+        mode: "0644"
+
+    - name: Copy LDAP CERT
+      copy:
+        src: LDAPS_CERT8.cer
+        dest: /etc/openldap/
+
+
+
+    - name: Add pam-config for SSS
+      command: pam-config -a --sss
+
+    - name: Add pam-config for creating home directories
+      command: pam-config -a --mkhomedir
