@@ -34,7 +34,7 @@
 
     - name: Copy realm RPM file to temporary directory
       copy:
-        src: realmd-0.16.3-lp151.2.4.x86_64.rpm
+        src: testfolder/realmd-0.16.3-lp151.2.4.x86_64.rpm
         dest: /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
       when: suse_version == '12'
 
