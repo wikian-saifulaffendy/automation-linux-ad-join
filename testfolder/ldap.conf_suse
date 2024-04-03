@@ -11,7 +11,7 @@
 #SIZELIMIT      12
 #TIMELIMIT      15
 #DEREF          never
-URI ldaps://kpngdcm02.isddc.men.maxis.com.my
-BASE    dc=isddc,dc=men,dc=maxis,dc=com,dc=my
-TLS_CACERT      /etc/openldap/
+#URI ldaps://WIKILABS_AD.wikilab.asia
+BASE    dc=wikilab,dc=asia
+TLS_CACERT      /etc/openldap/LDAPS_CERT8.cer
 TLS_REQCERT demand
