@@ -53,8 +53,7 @@
       register: join_domain
       ignore_errors: yes
       no_log: True
-      when: suse_version == 15
-
+      
     - name: Take a backup of the original nsswitch.conf file
       copy:
         src: /etc/nsswitch.conf
@@ -95,8 +94,6 @@
       copy:
         src: testfolder/LDAPS_CERT8.cer
         dest: /etc/openldap/
-
-
 
     - name: Add pam-config for SSS
       command: pam-config -a --sss
