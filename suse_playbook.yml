@@ -54,22 +54,22 @@
       ignore_errors: yes
       no_log: True
       
-    - name: Take a backup of the original nsswitch.conf file
-      copy:
-        src: /etc/nsswitch.conf
-        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
-        remote_src: yes
-        backup: yes
+#    - name: Take a backup of the original nsswitch.conf file
+#      copy:
+#        src: /etc/nsswitch.conf
+#        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
+#        remote_src: yes
+#        backup: yes
 
-    - name: Update configuration file
-      ansible.builtin.replace:
-        path: /etc/nsswitch.conf
-        regexp: "{{ item.regexp }}"
-        replace: "{{ item.replace }}"
-      loop:
-        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
-        - { regexp: '^group:.*', replace: 'group: compact sss' }
-        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
+#   - name: Update configuration file
+#     ansible.builtin.replace:
+#        path: /etc/nsswitch.conf
+#        regexp: "{{ item.regexp }}"
+#        replace: "{{ item.replace }}"
+#      loop:
+#        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+#        - { regexp: '^group:.*', replace: 'group: compact sss' }
+#        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
 
     # - name: Update configuration file
     #   lineinfile:
@@ -98,5 +98,5 @@
 #    - name: Add pam-config for SSS
 #      command: pam-config -a --sss
 
-   # - name: Add pam-config for creating home directories
-  #   command: pam-config -a --mkhomedir
+#    - name: Add pam-config for creating home directories
+#     command: pam-config -a --mkhomedir
