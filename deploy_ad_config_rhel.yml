@@ -1,0 +1,195 @@
+---
+- name: Detect and Execute OS-specific tasks
+  hosts: all
+  gather_facts: yes
+  vars:
+    domain_name: "{{dname}}"
+    ad_server_ip: "{{ip}}"
+    username: "{{user}}"
+    password: "{{pass}}"
+
+
+  tasks:
+    - name: Get Current Date and Time
+      shell: date "+%d-%m_%Y-%H:%M:%S"
+      register: current_datetime
+      delegate_to: localhost
+
+    - name: Get OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: get ansible_distribution_major_version in ansible facts variable
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: print the value
+      debug:
+        var: ansible_distribution_major_version
+
+
+#insatll the package
+    - name: Install realm package along with sssd
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - realmd
+        - adcli
+        - sssd
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - sshpass
+
+
+# taking backup of hosts and resolv.conf file
+#    - name: taking backup of hosts file
+#      copy:
+#        src: /etc/hosts
+#        dest: /etc/hosts_{{current_datetime.stdout}}
+#        remote_src: yes
+
+#    - name: taking backup of hosts file
+#      copy:
+#        src: /etc/resolv.conf
+#        dest: /etc/resolv.conf_{{current_datetime.stdout}}
+#        remote_src: yes
+
+#    - name: add domain into host
+#      lineinfile:
+#        path: /etc/hosts
+#        regexp: '^{{ad_server_ip}} {{domain_name}}'
+#        line: '{{ad_server_ip}} {{domain_name}}'
+#        state: present
+
+#    - name: add domain into  resolv.cnf
+#      lineinfile:
+#        path: /etc/resolv.conf
+#        insertbefore: BOF
+#        regexp: '^nameserver {{ad_server_ip}}'
+#        line: 'nameserver {{ad_server_ip}}'
+#        state: present
+
+#    - name: add domain into  resolv.cnf
+#      lineinfile:
+#        path: /etc/resolv.conf
+#        insertbefore: BOF
+#        regexp: '^search {{domain_name}}'
+#        line: 'search {{domain_name}}'
+#        state: present
+
+###join the domain
+
+    - name: validarte the domain dig -t SRV _ldap._tcp.{{domain_name}}
+      shell: dig -t SRV _ldap._tcp.{{domain_name}}
+      register: dig_ldap
+
+    - name: validarte the domain dig -t SRV _kerberos._tcp.{{domain_name}}
+      shell: dig -t SRV _kerberos._tcp.{{domain_name}}
+      register: dig_kerberos
+
+    - name: validarte the domain dig -t SRV _ldap._tcp.dc._msdcs.{{domain_name}}
+      shell: dig -t SRV _ldap._tcp.dc._msdcs.{{domain_name}}
+      register: dig_msdcs
+
+    - name: print the value dig_ldap
+      debug:
+        var: dig_ldap.stdout_lines
+    - name: print the value dig_kerberos
+      debug:
+        var: dig_kerberos.stdout_lines
+    - name: print the value dig_msdcs
+      debug:
+        var: dig_msdcs.stdout_lines
+
+    - name: Join the domain adcli join --use-ldaps <domain_name> -U <username> --verbose
+      shell: echo {{password}} | adcli join --use-ldaps {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+      when: ansible_distribution_major_version|int == 6
+
+
+
+    - name: Join the domain adcli join --use-ldaps <domain_name> -U <username> --verbose
+      shell: echo {{password}} | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+      no_log: true
+     # when: ansible_distribution_major_version|int != 6
+
+
+    - name: change the file content
+      lineinfile:
+        path: /etc/sssd/sssd.conf
+        regexp: '^use_fully_qualified_names'
+        line: '#use_fully_qualified_names = True'
+        state: present
+      when: ansible_distribution_major_version|int != 6
+
+    - name: copy the sssd.conf file
+      copy:
+        src: sssd.conf
+        dest: /etc/sssd/
+        mode: 0600
+        owner: root
+        group: root
+      when: ansible_distribution_major_version|int == 6
+
+
+    - name: restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+    - name: register auth
+      shell: authconfig --enablesssd --enablesssdauth --enablelocauthorize --enablemkhomedir --update
+      when: ansible_distribution_major_version|int == 7 or ansible_distribution_major_version|int == 6
+
+    - name: register auth for rhel 8
+      shell: authselect select sssd with-mkhomedir
+      when: ansible_distribution_major_version|int == 8
+
+
+    - name: start and enable oddjobd.service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+
+    - name: Downloading cert from Github
+      get_url:
+        url: https://github.com/Wiki-sainath/test1/blob/main/LDAPS_CERT8.cer
+        dest: /tmp
+      delegate_to: localhost
+
+    - name: Copy the certificate file
+      copy:
+        src: /tmp/LDAPS_CERT8.cer
+        dest: /etc/openldap/certs
+
+    - name: add path to the krb5.conf
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/LDAPS_CERT8.cer'
+        state: present
+
+
+    - name: login and print the working directory via ssh
+      shell: id {{username}}
+      register: id
+      ignore_errors: yes
+
+    - name: print the value
+      debug:
+        var: id.stdout_lines
+
+
+    - name: realm permit
+      shell: realm permit -g 'wikilab.asia\wikilabs_cet'
+      register: join_domain
+      ignore_errors: yes
+      when: ansible_distribution_major_version|int == 7 or ansible_distribution_major_version|int == 8
