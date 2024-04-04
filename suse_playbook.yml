@@ -98,5 +98,5 @@
     - name: Add pam-config for SSS
       command: pam-config -a --sss
 
-    - name: Add pam-config for creating home directories
-      command: pam-config -a --mkhomedir
+   # - name: Add pam-config for creating home directories
+    #  command: pam-config -a --mkhomedir
