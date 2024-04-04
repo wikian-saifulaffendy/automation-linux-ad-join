@@ -101,7 +101,7 @@
         state: restarted
     
     - name: Ldaps validation
-      shell: ss -tlpna |grep 636
+      shell: lsof -i:636
       register: ldap_validation
       ignore_errors: yes
     
