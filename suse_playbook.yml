@@ -55,8 +55,7 @@
       when: suse_version == '12'
       
     - name: Update the RPM packages
-      command: rpm -Uvh /tmp/{{ item }}
-      loop: "{{ rpms }}"
+      command: rpm -Uvh /tmp/sssd-1.16.1-7.8.1.x86_64.rpm /tmp/sssd-ldap-1.16.1-7.8.1.x86_64.rpm /tmp/sssd-krb5-common-1.16.1-7.8.1.x86_64.rpm
       when: suse_version == '12'
       
     - name: Update the Krb5 configuration
