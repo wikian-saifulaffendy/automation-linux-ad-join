@@ -40,6 +40,7 @@
 
     - name: Install realm RPM using rpm command
       command: rpm -ivh /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+      ignore_errors: yes
       when: suse_version == '12'
 
     - name: Update the Krb5 configuration
