@@ -52,10 +52,12 @@
         src: testfolder/{{ item }}  # Local path to RPMs
         dest: /tmp  # Temporary destination on target hosts
       loop: "{{ rpms }}"
+      when: suse_version == '12'
       
     - name: Update the RPM packages
       command: rpm -Uvh /tmp/{{ item }}
       loop: "{{ rpms }}"
+      when: suse_version == '12'
       
     - name: Update the Krb5 configuration
       copy:
