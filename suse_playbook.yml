@@ -105,7 +105,17 @@
       copy:
         src: testfolder/LDAPS_CERT8.cer
         dest: /etc/openldap/
-        
+
+    - name: Disable NSCD socket
+      service:
+        name: nscd
+        state: stopped
+      
+    - name: Ensure nscd service is disabled
+      service:
+        name: nscd
+        enabled: no  
+                
     - name: Restart sssd
       service:
         name: sssd
