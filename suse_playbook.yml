@@ -99,6 +99,15 @@
       service:
         name: sssd
         state: restarted
+
+    - name: Check ID for AD user
+      shell: id {{username}}
+      register: id
+      ignore_errors: yes
+
+    - name: print the value ID
+      debug:
+        var: id.stdout_lines 
     
     - name: Ldaps validation
       shell: lsof -i:636
@@ -109,14 +118,6 @@
       debug:
         var: ldap_validation.stdout_lines
         
-    - name: Check ID for AD user
-      shell: id {{username}}
-      register: id
-      ignore_errors: yes
-
-    - name: print the value ID
-      debug:
-        var: id.stdout_lines 
 
 #    - name: Add pam-config for SSS
 #      command: pam-config -a --sss
