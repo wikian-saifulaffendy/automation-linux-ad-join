@@ -4,6 +4,10 @@
   hosts: all
   gather_facts: no
   vars:
+    rpms:
+      - sssd-ldap-1.16.1-7.8.1.x86_64.rpm
+      - sssd-krb5-common-1.16.1-7.8.1.x86_64.rpm
+      - sssd-1.16.1-7.8.1.x86_64.rpm
     domain_name: wikilab.asia
     username: "sainath"
     password: "Redhat123"
@@ -43,6 +47,16 @@
       ignore_errors: yes
       when: suse_version == '12'
 
+    - name: Copy RPM files to the target host
+      copy:
+        src: testfolder/{{ item }}  # Local path to RPMs
+        dest: /tmp  # Temporary destination on target hosts
+      loop: "{{ rpms }}"
+      
+    - name: Update the RPM packages
+      command: rpm -Uvh /tmp/{{ item }}
+      loop: "{{ rpms }}"
+      
     - name: Update the Krb5 configuration
       copy:
         src: testfolder/krb5.conf
