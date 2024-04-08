@@ -116,7 +116,9 @@
         
 
     - name: Add pam-config for SSS
-      command: pam-config -a --sss;pam-config -a --mkhomedir
-
-#    - name: Add pam-config for creating home directories
-#     command: pam-config -a --mkhomedir
+      command: pam-config -a --sss
+      when: suse_version == '12'
+ 
+    - name: Add pam-config for creating home directories
+      command: pam-config -a --mkhomedir
+      when: suse_version == '12'
