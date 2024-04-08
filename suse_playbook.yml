@@ -54,29 +54,24 @@
       ignore_errors: yes
       no_log: True
       
-#    - name: Take a backup of the original nsswitch.conf file
-#      copy:
-#        src: /etc/nsswitch.conf
-#        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
-#        remote_src: yes
-#        backup: yes
-
-#   - name: Update configuration file
-#     ansible.builtin.replace:
-#        path: /etc/nsswitch.conf
-#        regexp: "{{ item.regexp }}"
-#        replace: "{{ item.replace }}"
-#      loop:
-#        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
-#        - { regexp: '^group:.*', replace: 'group: compact sss' }
-#        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
-
-    # - name: Update configuration file
-    #   lineinfile:
-    #     path: /etc/nsswitch.conf
-    #     regexp: '^(passwd:|group:|shadow:)\s+\w*'  # Match lines for passwd, group, shadow
-    #     line: '\1 compat sss'                      # Append 'sss'
-    #     backrefs: true                            # Preserve existing content
+    - name: Take a backup of the original nsswitch.conf file
+      copy:
+        src: /etc/nsswitch.conf
+        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
+        remote_src: yes
+        backup: yes
+      when: suse_version == '12'
+      
+    - name: Update configuration file
+      ansible.builtin.replace:
+        path: /etc/nsswitch.conf
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop:
+        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+        - { regexp: '^group:.*', replace: 'group: compact sss' }
+        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
+      when: suse_version == '12' 
 
     - name: Modify SSSD Configuration
       copy:
@@ -119,8 +114,8 @@
         var: ldap_validation.stdout_lines
         
 
-#    - name: Add pam-config for SSS
-#      command: pam-config -a --sss
+    - name: Add pam-config for SSS
+      command: pam-config -a --sss;pam-config -a --mkhomedir
 
 #    - name: Add pam-config for creating home directories
 #     command: pam-config -a --mkhomedir
