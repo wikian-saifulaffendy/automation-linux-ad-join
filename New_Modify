@@ -1,0 +1,214 @@
+---
+- name: Detect and Execute OS-specific tasks
+  hosts: "{{ host_list }}"
+  gather_facts: yes
+  vars:
+    domain_name: isddc.men.maxis.com.my
+    username: "mvenkata"
+    password: "{{ pass }}"
+    whitelist_users: "{{whitelist_users_awx}}"
+    whitelist_groups: "{{whitelist_groups_awx}}"
+
+
+  tasks:
+    - name: Get Current Date and Time
+      shell: date "+%d-%m_%Y-%H:%M:%S"
+      register: current_datetime
+      delegate_to: localhost
+
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+
+
+#Install necessary packages
+    - name: Install realm package along with sssd
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - realmd
+        - adcli
+        - sssd
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - lsof
+      ignore_errors: yes
+      
+###Domain Join Tasks
+    - name: Validate domain records
+      shell: dig -t SRV {{ item }} {{ domain_name }}
+      register: domain_records
+      loop:
+         - _ldap._tcp.
+         - _kerberos._tcp.
+         - _ldap._tcp.dc._msdcs.
+   
+    - name: Debug domain lookup results
+      debug:
+        msg: item.item.stdout
+      loop: "{{ domain_records.results }}"
+    
+    - name: Join domain (RHEL 6 compatible)
+      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
+      register: join_domain
+      ignore_errors: yes
+      no_log: True
+      when: ansible_distribution_major_version|int == 6
+
+
+
+    - name: Join domain (RHEL 7, 8, etc.)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+      no_log: True
+      when: ansible_distribution_major_version|int != 6
+
+    
+    - name: Modify SSSD Configuration in RHEL7, 8 and 9
+      copy:
+        src: sssd.conf
+        dest: /etc/sssd/
+        mode: "0600"
+      when: ansible_distribution_major_version|int != 6
+      
+    - name: Modify SSSD Configuration in RHEL6
+      copy:
+        src: sssd.conf_rhel6
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+      when: ansible_distribution_major_version|int == 6
+      
+    - name: Modify ldap Configuration in RHEL6
+      copy:
+        src: ldap.conf_rhel6
+        dest: /etc/openldap/ldap.conf
+        mode: "0644"
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Register auth for rhel 6 & 7
+      shell: authconfig --enablesssd --enablesssdauth --enablelocauthorize --enablemkhomedir --update
+      when: ansible_distribution_major_version|int == 7 or ansible_distribution_major_version|int == 6
+
+    - name: Register auth for rhel 8 & 9
+      shell: authselect select sssd with-mkhomedir
+      when: ansible_distribution_major_version|int == 8 or ansible_distribution_major_version|int == 9
+
+    - name: start and enable oddjobd.service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+      when: ansible_distribution_major_version|int != 6  
+          
+    - name: Copy LDAP CERT
+      copy:
+        src: isddc.mem.maxis.com.my.pem
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: CERT Rehash in RHLE 6
+      shell: cacertdir_rehash /etc/openldap/certs
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Add path to the ldap.conf
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/isddc.mem.maxis.com.my.pem'
+        state: present
+      when: ansible_distribution_major_version|int != 6  
+
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+    - name: Check ID for AD user
+      shell: id {{username}}
+      register: id
+      ignore_errors: yes
+
+    - name: print the value ID
+      debug:
+        var: id.stdout_lines
+
+    - name: Ldaps validation
+      shell: netstat -tlpan|grep 636
+      register: netstat
+      ignore_errors: yes
+      vars:
+        ansible_shell_type: sh
+        ansible_shell_executable: /bin/sh
+    
+    - name: print the value Ldaps validation
+      debug:
+        var: netstat.stdout_lines
+        
+    - name: Print any errors
+      debug:
+        var: ansible_failed_result
+      when: netstat.rc != 0
+        
+    - name: Take a backup of the sudoers file
+      command: cp /etc/sudoers /etc/sudoers.bak
+      changed_when: false
+
+    - name: Add GRP_ISD_AUTOMATION into Sudoers file
+      lineinfile:
+        path: /etc/sudoers
+        line: '%GRP_ISD_AUTOMATION     ALL=(ALL)       NOPASSWD: ALL'
+        insertafter: EOF
+        state: present
+
+    - name: Check sudoers file syntax
+      command: visudo -c
+      changed_when: false
+      ignore_errors: yes
+      register: visudo_check
+    
+    - name: Revert changes if syntax check fails
+      command: mv /etc/sudoers.bak /etc/sudoers
+      when: visudo_check.rc != 0 and sudoers_result.rc == 0
+      ignore_errors: yes
+
+    - name: ReCheck sudoers file syntax
+      command: visudo -c
+      changed_when: false
+      ignore_errors: yes
+      register: visudo_check
+
+    - name: print the sudoers Status
+      debug:
+        var: visudo_check.stdout_lines
+
+
+    - name: Add User and Group to SSSD configuration file
+      blockinfile:
+        path: /etc/sssd/sssd.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - DO NOT EDIT THIS BLOCK MANUALLY"
+        block: |
+          simple_allow_users = {{ user_list | join(', ') }}
+          simple_allow_groups = {{ group_list | join(', ') }}
+      vars:
+        user_list: "{{ whitelist_users }}"
+        group_list: "{{ whitelist_groups }}"
+    
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+        
