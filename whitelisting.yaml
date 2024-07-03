@@ -1,6 +1,6 @@
 ---
 - name: Detect and Execute OS-specific tasks
-  hosts: "{{ host_list }}"
+  hosts: all
   gather_facts: yes
   vars:
     ansible_python_interpreter: /usr/bin/python3.6
