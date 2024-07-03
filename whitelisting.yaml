@@ -8,10 +8,10 @@
     whitelist_groups: "{{ whitelist_groups_awx| default('') }}"    
   tasks:
   - name: Execute command for user
-    shell: realm permit {{ username_var }}
+    shell: realm permit {{ whitelist_users }}
     when: username_var != ''
     register: command_output
   - name: Execute command for group
-    shell: realm permit -g {{ groupname_var }}
+    shell: realm permit -g {{ whitelist_groups }}
     when: groupname_var != ''
     register: command_output
