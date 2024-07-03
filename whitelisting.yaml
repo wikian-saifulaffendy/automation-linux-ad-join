@@ -9,9 +9,9 @@
   tasks:
   - name: Execute command for user
     shell: realm permit {{ whitelist_users }}
-    when: username_var != ''
+    when: whitelist_users != ''
     register: command_output
   - name: Execute command for group
     shell: realm permit -g {{ whitelist_groups }}
-    when: groupname_var != ''
+    when: whitelist_groups != ''
     register: command_output
