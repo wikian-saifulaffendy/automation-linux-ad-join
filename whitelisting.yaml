@@ -1,0 +1,23 @@
+---
+- name: Detect and Execute OS-specific tasks
+  hosts: "{{ host_list }}"
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3.6
+    username_var: "{{ username }}"
+    groupname_var: "{{ groupname }}"
+  tasks:
+  - name: Check if the selection is groups
+    debug: msg: "You selected groups."
+    when: selection == '1'
+  - name: Check if the selection is user
+    debug: msg: "You selected user."
+    when: selection == '2'
+  - name: Execute command for groups
+    shell: realm permit -g {{ groupname_var }}
+    when: selection == '1'
+    register: command_output
+  - name: Execute command for user
+    shell: realm permit {{ username_var }}
+    when: selection == '2'
+    register: command_output
