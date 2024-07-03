@@ -4,8 +4,8 @@
   gather_facts: yes
   vars:
     ansible_python_interpreter: /usr/bin/python3.6
-    username_var: "{{ username | default('') }}"
-    groupname_var: "{{ groupname | default('') }}"
+    whitelist_users: "{{ whitelist_users_awx | default('') }}"
+    whitelist_groups: "{{ whitelist_groups_awx| default('') }}"    
   tasks:
   - name: Execute command for user
     shell: realm permit {{ username_var }}
