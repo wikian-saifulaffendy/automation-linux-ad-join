@@ -110,7 +110,7 @@
 
     - name: Copy LDAP CERT
       copy:
-        src: isddc.mem.maxis.com.my.pem
+        src: LDAPS_CERT8.cer
         dest: /etc/openldap/certs
         mode: "0655"
 
@@ -120,7 +120,7 @@
 
     - name: Copy LDAP CERT
       copy:
-        src: isddc.mem.maxis.com.my.pem
+        src: LDAPS_CERT8.cer
         dest: /etc/openldap/certs
         mode: "0655"
     
