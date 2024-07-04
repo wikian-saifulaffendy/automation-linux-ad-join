@@ -32,7 +32,7 @@
             if ! rpm -q realm; then
             yum install -y realmd || echo "Error: No package realm available"
             fi
-            realm list
+            realm list | egrep "realm-name|domain-name"
       register: check_realm
       when: ansible_distribution_major_version|int != 6
       failed_when: "'Error: No package realm available' in check_realm.stdout"
