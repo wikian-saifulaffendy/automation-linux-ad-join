@@ -40,7 +40,7 @@
     - name: Checking..... (Skipping means not Joined)
       debug:
         msg: "System is already joined to a realm"
-      when: check_realm.rc == 0 and check_realm.stdout.strip() != ""
+      when: check_realm.rc == 0 and check_realm.stdout.strip() != "" and "Not joined" not in check_realm.stdout
 
 
     #Install necessary packages
