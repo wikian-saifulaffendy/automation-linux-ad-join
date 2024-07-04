@@ -75,7 +75,7 @@
       lineinfile:
         path: /etc/openldap/ldap.conf
         insertafter: BOF
-        line: 'TLS_CACERT      /etc/openldap/certs/isddc.mem.maxis.com.my.pem'
+        line: 'TLS_CACERT      /etc/openldap/certs/LDAPS_CERT8.cer'
         state: present
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""      
 
