@@ -30,12 +30,12 @@
     - name: Install realm package and get realm list
       shell: |
             if ! rpm -q realm; then
-            yum install -y realm
+            yum install -y realmd || echo "Error: No package realm available"
             fi
             realm list
       register: check_realm
       when: ansible_distribution_major_version|int != 6
-
+      failed_when: "'Error: No package realm available' in check_realm.stdout"
   
     - name: Checking..... (Skipping means not Joined)
       debug:
