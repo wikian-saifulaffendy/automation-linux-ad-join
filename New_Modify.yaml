@@ -22,9 +22,17 @@
     - name: Print the OS major version
       debug:
         var: ansible_distribution_major_version
-
-    - name: Get realm list
-      shell: realm list
+    
+#     - name: Get realm list
+#      shell: realm list
+#      register: check_realm
+#      when: ansible_distribution_major_version|int != 6
+    - name: Install realm package and get realm list
+      shell: |
+            if ! rpm -q realm; then
+            yum install -y realm
+            fi
+            realm list
       register: check_realm
       when: ansible_distribution_major_version|int != 6
 
