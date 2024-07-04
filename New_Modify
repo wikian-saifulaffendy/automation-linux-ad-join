@@ -6,8 +6,6 @@
     domain_name: wikilab.asia
     username: "sainath@wikilab.asia"
     password: "Redhat123"
-    # whitelist_users: "{{whitelist_users_awx}}"
-    # whitelist_groups: "{{whitelist_groups_awx}}"
     ansible_python_interpreter: /usr/bin/python3.6
 
   tasks:
@@ -53,34 +51,87 @@
         - lsof
       when: not check_realm.rc == 0 or check_realm.stdout.strip() == ""
 
-
-
     - name: Join domain (RHEL 6 compatible)
       shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
       register: join_domain
       ignore_errors: yes
       no_log: True
-      when: ansible_distribution_major_version|int == 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+      when: ansible_distribution_major_version|int == 6
 
-    - name: Join domain (RHEL 7, 8, etc.)
+    - name: Join domain (RHEL 7, 8, 9)
       shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
       register: join_domain
       ignore_errors: yes
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
 
+    - name: Modify SSSD Configuration in RHEL7, 8 and 9
+      copy:
+        src: sssd.conf
+        dest: /etc/sssd/
+        mode: "0600"
+      when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+
+    - name: Add cert path to the ldap.conf in RHEL7, 8 and 9
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/isddc.mem.maxis.com.my.pem'
+        state: present
+      when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""      
+
+    - name: start and enable oddjobd.service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+      when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""       
+
+    - name: Modify SSSD Configuration in RHEL6
+      copy:
+        src: sssd.conf_rhel6
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Modify ldap Configuration in RHEL6
+      copy:
+        src: ldap.conf_rhel6
+        dest: /etc/openldap/ldap.conf
+        mode: "0644"
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Copy LDAP CERT
+      copy:
+        src: isddc.mem.maxis.com.my.pem
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: CERT Rehash in RHLE 6
+      shell: cacertdir_rehash /etc/openldap/certs
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Copy LDAP CERT
+      copy:
+        src: isddc.mem.maxis.com.my.pem
+        dest: /etc/openldap/certs
+        mode: "0655"
+    
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
     - name: login and print the working directory via ssh
       shell: id {{username}}
       register: id
-      ignore_errors: yes
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
-
 
     - name: print the value
       debug:
         var: id.stdout_lines
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
 
-    - name: login Before Blacklisting
+    - name: login Before Blacklisting. (If SSH fails need to validate)
       shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
       register: ssh
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
@@ -89,19 +140,22 @@
       debug:
         var: ssh.stdout_lines
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+
     - name: Blacklisting all Users
       shell: realm permit -x {{username}}
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
 
+    - name: Blacklisting all Groups
+      shell: realm permit -xg {{username}}
+      when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
 
     - name: login via ssh to user After Blacklisting
-      shell: sshpass -p "{{password}}" ssh sainath@localhost pwd
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
       register: ssh
       ignore_errors: yes
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+
     - name: Print message based on SSH exit code (improved)
       debug:
         msg: "{{ 'All Users are blacklisted' if ssh.rc == 255 else 'Permission Denied' }}"  # Conditional message
       when: ssh.rc in (255, 5) and ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
-
-
