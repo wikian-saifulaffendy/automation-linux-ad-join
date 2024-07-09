@@ -74,7 +74,7 @@
 
     - name: Modify SSSD Configuration in RHEL7, 8 and 9
       copy:
-        src: sssd.conf
+        src: testfolder/sssd.conf
         dest: /etc/sssd/
         mode: "0600"
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
@@ -96,34 +96,28 @@
 
     - name: Modify SSSD Configuration in RHEL6
       copy:
-        src: sssd.conf_rhel6
+        src: testfolder/sssd.conf_rhel6
         dest: /etc/sssd/sssd.conf
         mode: "0600"
       when: ansible_distribution_major_version|int == 6
 
     - name: Modify ldap Configuration in RHEL6
       copy:
-        src: ldap.conf_rhel6
+        src: testfolder/ldap.conf_rhel6
         dest: /etc/openldap/ldap.conf
         mode: "0644"
       when: ansible_distribution_major_version|int == 6
 
     - name: Copy LDAP CERT
       copy:
-        src: LDAPS_CERT8.cer
+        src: testfolder/LDAPS_CERT8.cer
         dest: /etc/openldap/certs
         mode: "0655"
 
     - name: CERT Rehash in RHLE 6
       shell: cacertdir_rehash /etc/openldap/certs
       when: ansible_distribution_major_version|int == 6
-
-    - name: Copy LDAP CERT
-      copy:
-        src: LDAPS_CERT8.cer
-        dest: /etc/openldap/certs
-        mode: "0655"
-    
+  
     - name: Restart sssd
       service:
         name: sssd
