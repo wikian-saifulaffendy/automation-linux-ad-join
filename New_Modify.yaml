@@ -42,9 +42,10 @@
         msg: "RHEL 6 server joined domain"
       when:
       - ansible_distribution_major_version|int == 6
-      - check_realm.stdout != ""
       - check_user.stdout != ""
       - check_ldap.stdout != ""
+      meta: 
+        end_play: "{{ ansible_distribution_major_version|int == 6 }}"
      
     - name: Install realm package and get realm list
       shell: |
