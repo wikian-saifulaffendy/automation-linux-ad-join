@@ -27,6 +27,25 @@
 #      shell: realm list
 #      register: check_realm
 #      when: ansible_distribution_major_version|int != 6
+    - name: Check if user sainath exists
+      shell: getent passwd sainath
+      register: check_user
+      when: ansible_distribution_major_version|int == 6
+      
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      when: ansible_distribution_major_version|int == 6
+    
+    - name: Print success message if all conditions are met
+      debug:
+        msg: "RHEL 6 server joined domain"
+      when:
+      - ansible_distribution_major_version|int == 6
+      - check_realm.stdout != ""
+      - check_user.stdout != ""
+      - check_ldap.stdout != ""
+     
     - name: Install realm package and get realm list
       shell: |
             if ! rpm -q realm; then
