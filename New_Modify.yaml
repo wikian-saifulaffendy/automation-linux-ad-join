@@ -4,8 +4,8 @@
   gather_facts: yes
   vars:
     domain_name: wikilab.asia
-    username: "sainath@wikilab.asia"
-    password: "Redhat123"
+    username: sainath@wikilab.asia
+    password: Redhat123
 #    ansible_python_interpreter: /usr/bin/python3.6
 
   tasks:
