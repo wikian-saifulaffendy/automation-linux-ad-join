@@ -3,9 +3,9 @@
   hosts: all
   gather_facts: yes
   vars:
-    domain_name: wikilab.asia
-    username: sainath@wikilab.asia
-    password: Redhat123
+    domain_name: "wikilab.asia"
+    username: "sainath@wikilab.asia"
+    password: "Redhat123"
 #    ansible_python_interpreter: /usr/bin/python3.6
 
   tasks:
@@ -67,7 +67,7 @@
       when: ansible_distribution_major_version|int == 6
 
     - name: Join domain (RHEL 7, 8, 9)
-      shell: echo "{{ password }}" | realm join {{domain_name}} -U {{username}} --verbose
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
       register: join_domain
       ignore_errors: yes
       when: ansible_distribution_major_version|int != 6 and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
