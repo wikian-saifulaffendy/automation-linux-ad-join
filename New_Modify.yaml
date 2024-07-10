@@ -44,8 +44,10 @@
       - ansible_distribution_major_version|int == 6
       - check_user.stdout != ""
       - check_ldap.stdout != ""
+
+    - name: End play if RHEL 6 server
       meta: 
-        end_play: "{{ ansible_distribution_major_version|int == 6 }}"
+          end_play: "{{ ansible_distribution_major_version|int == 6 }}"
      
     - name: Install realm package and get realm list
       shell: |
