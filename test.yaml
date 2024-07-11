@@ -1,7 +1,7 @@
 ---
 - name: Check if machine is joined to AD domain
   hosts: all
-  become: true
+  gather_facts: no
 
   tasks:
   - name: Check if user exists
