@@ -9,7 +9,7 @@
 
   tasks:
   - name: Check if user exists
-    command: id sainath
+    shell: id sainath
     register: user_check
     changed_when: False
 
