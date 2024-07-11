@@ -66,7 +66,7 @@
     - name: Checking RHEL 7,8,9..... (Skipping means not Joined)
       debug:
         msg: "System is already joined to a realm"
-      when: check_realm.rc == 0 and check_realm.stdout.strip() != "" and "Not joined" not in check_realm.stdout and ansible_distribution_major_version|int != 6
+      when: ansible_distribution_major_version|int != 6 and check_realm.rc == 0 and check_realm.stdout.strip() != "" and "Not joined" not in check_realm.stdout
 
 
     #Install necessary packages
