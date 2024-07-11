@@ -13,7 +13,7 @@
     
   - name: Print user_check result
     debug:
-    msg: "Output of 'id sainath': {{ user_check.stdout }}"
+      msg: "Output of 'id sainath': {{ user_check.stdout }}"
     
   - name: Check if LDAP port is in use
     command: lsof -i:636
@@ -23,7 +23,7 @@
 
   - name: Print ldap_check result
     debug:
-    msg: "Output of 'lsof -i:636': {{ ldap_check.stdout }}"
+      msg: "Output of 'lsof -i:636': {{ ldap_check.stdout }}"
   - name: Print result
   
     debug:
