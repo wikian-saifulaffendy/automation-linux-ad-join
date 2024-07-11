@@ -1,7 +1,7 @@
 ---
 - name: Detect and Execute OS-specific tasks
   hosts: all
-  gather_facts: no
+  gather_facts: yes
   vars:
     domain_name: "wikilab.asia"
     username: "sainath@wikilab.asia"
@@ -27,14 +27,18 @@
 #      shell: realm list
 #      register: check_realm
 #      when: ansible_distribution_major_version|int != 6
-    - name: Check if user sainath exists
+    - name: Check if user sainath exists in RHEL6
       shell: getent passwd sainath
       register: check_user
+      changed_when: False
+      ignore_errors: True
       when: ansible_distribution_major_version|int == 6
       
     - name: Check if LDAP port is in use
       shell: lsof -i:636
       register: check_ldap
+      changed_when: False
+      ignore_errors: True      
       when: ansible_distribution_major_version|int == 6
     
     - name: Print success message if all conditions are met
