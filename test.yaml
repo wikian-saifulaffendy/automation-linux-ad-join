@@ -1,0 +1,20 @@
+---
+- name: Check if machine is joined to AD domain
+  hosts: all
+  become: true
+
+  tasks:
+  - name: Check if user exists
+    command: id sainath
+    register: user_check
+
+  - name: Check if LDAP port is in use
+    command: lsof -i:636
+    register: ldap_check
+
+  - name: Print result
+    debug:
+      msg: "Machine is joined to AD domain"
+    when:
+      - user_check.stdout != ""
+      - ldap_check.stdout != ""
