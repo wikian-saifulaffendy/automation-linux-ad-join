@@ -69,8 +69,8 @@
       when: 
       - ansible_distribution_major_version|int != 6
       - check_realm.rc == 0
-      - check_realm.stdout.strip() != ""
-      - "Not joined" not in check_realm.stdout
+#      - check_realm.stdout.strip() != ""
+#      - "Not joined" not in check_realm.stdout
 
 
     #Install necessary packages
