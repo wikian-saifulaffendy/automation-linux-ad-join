@@ -9,13 +9,23 @@
     command: id sainath
     register: user_check
     changed_when: False
-
+    ignore_errors: True
+    
+  - name: Print user_check result
+    debug:
+    msg: "Output of 'id sainath': {{ user_check.stdout }}"
+    
   - name: Check if LDAP port is in use
     command: lsof -i:636
     register: ldap_check
     changed_when: False
+    ignore_errors: True
 
+  - name: Print ldap_check result
+    debug:
+    msg: "Output of 'lsof -i:636': {{ ldap_check.stdout }}"
   - name: Print result
+  
     debug:
       msg: "Machine is joined to AD domain"
     when: user_check.stdout != "" and ldap_check.stdout != ""
