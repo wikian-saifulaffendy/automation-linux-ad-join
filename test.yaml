@@ -6,4 +6,4 @@
   
   tasks:
     - name: Gather OS version and distribution facts
-      shell: python --version
+      command: python --version
