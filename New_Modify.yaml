@@ -63,10 +63,14 @@
       when: ansible_distribution_major_version|int != 6
       failed_when: "'Error: No package realm available' in check_realm.stdout"
   
-    - name: Checking..... (Skipping means not Joined)
+    - name: Checking RHEL 7,8,9..... (Skipping means not Joined)
       debug:
         msg: "System is already joined to a realm"
-      when: check_realm.rc == 0 and check_realm.stdout.strip() != "" and "Not joined" not in check_realm.stdout and ansible_distribution_major_version|int != 6
+      when: 
+        - check_realm.rc == 0 
+        - check_realm.stdout.strip() != "" 
+        - "Not joined" not in check_realm.stdout 
+        - ansible_distribution_major_version|int != 6
 
 
     #Install necessary packages
