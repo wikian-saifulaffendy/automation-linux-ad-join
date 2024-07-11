@@ -5,5 +5,7 @@
   become: true
   
   tasks:
-    - name: Check Python version
-      command: python --version
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
