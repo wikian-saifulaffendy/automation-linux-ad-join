@@ -2,19 +2,20 @@
 - name: Check if machine is joined to AD domain
   hosts: all
   gather_facts: no
+  become: true
 
   tasks:
   - name: Check if user exists
     command: id sainath
     register: user_check
+    changed_when: False
 
   - name: Check if LDAP port is in use
     command: lsof -i:636
     register: ldap_check
+    changed_when: False
 
   - name: Print result
     debug:
       msg: "Machine is joined to AD domain"
-    when:
-      - user_check.stdout != ""
-      - ldap_check.stdout != ""
+    when: user_check.stdout != "" and ldap_check.stdout != ""
