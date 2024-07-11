@@ -6,6 +6,4 @@
   
   tasks:
     - name: Gather OS version and distribution facts
-      debug:
-        var: ansible_distribution_version
-      register: os_version
+      shell: python --version
