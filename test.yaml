@@ -42,18 +42,18 @@
     
     - name: Install realm package and get realm list
       shell: |
-            if ! rpm -q realm; then
+            if ! rpm -q realmd; then
             yum install -y realmd || echo "Error: No package realmd available"
             fi
             realm list | egrep "realm-name|domain-name"
       register: check_realm
-      when: check_user.rc != 0 or check_ldap.rc != 0
+      #when: check_user.rc != 0 or check_ldap.rc != 0
       failed_when: "'Error: No package realmd available' in check_realm.stdout"
 
     - name: Print success message if RHEL 789 server joined domain
       debug:
         msg: "RHEL 789 server joined domain"
-      when: check_realm.stdout.strip() != ""
+      #when: check_realm.stdout.strip() != ""
       
     - name: Print failure message if RHEL 789 server Not joined domain
       debug:
