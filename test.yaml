@@ -40,15 +40,18 @@
       changed_when: False
       ignore_errors: True      
     
-    - name: Install realm package and get realm list
+    - name: Install realm package
       shell: |
             if ! rpm -q realmd; then
             yum install -y realmd || echo "Error: No package realmd available"
             fi
-            realm list | egrep "realm-name|domain-name"
+      register: check_realmpkg
+      failed_when: "'Error: No package realmd available' in check_realmpkg.stdout"
+
+    - name: Check realm list
+      shell: realm list | egrep "realm-name|domain-name"
       register: check_realm
-      #when: check_user.rc != 0 or check_ldap.rc != 0
-      failed_when: "'Error: No package realmd available' in check_realm.stdout"
+      when: check_realmpkg.stderr == ""
 
     - name: Print success message if RHEL 789 server joined domain
       debug:
