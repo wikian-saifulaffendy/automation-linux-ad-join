@@ -51,6 +51,8 @@
     - name: Check realm list
       shell: realm list | egrep "realm-name|domain-name"
       register: check_realm
+      changed_when: False
+      ignore_errors: True 
       when: check_realmpkg.stderr == ""
 
     - name: Print success message if RHEL 789 server joined domain
