@@ -53,7 +53,7 @@
     - name: Print success message if RHEL 789 server joined domain
       debug:
         msg: "RHEL 789 server joined domain"
-      when: check_realm.rc == 0
+      when: check_realm.stdout.strip() != ""
       
     - name: Print failure message if RHEL 789 server Not joined domain
       debug:
