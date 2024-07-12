@@ -93,7 +93,7 @@
         mode: "0655"
 
     - name: CERT Rehash in RHLE 6
-      shell: cacertdir_rehash /etc/openldap/certs
+      shell: cacertdir_rehash /etc/openldap/cacerts
       when: ansible_distribution_major_version|int == 6
 
     - name: Restart sssd
