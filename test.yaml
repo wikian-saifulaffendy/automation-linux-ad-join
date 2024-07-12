@@ -68,3 +68,83 @@
     - name: Exit the playbook if RHEL 789 server joined domain
       meta: end_play
       when: check_realm.rc == 0
+
+    - name: Install realm package along with sssd
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - realmd
+        - adcli
+        - sssd
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - lsof
+
+    - name: Join domain (RHEL 7, 8, 9)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U sainath --verbose
+      register: join_domain
+      ignore_errors: yes
+
+    - name: Modify SSSD Configuration in RHEL7, 8 and 9
+      copy:
+        src: testfolder/sssd.conf
+        dest: /etc/sssd/
+        mode: "0600"
+
+    - name: Add cert path to the ldap.conf in RHEL7, 8 and 9
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/LDAPS_CERT8.cer'
+        state: present
+
+    - name: start and enable oddjobd.service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+    - name: Copy LDAP CERT
+      copy:
+        src: testfolder/LDAPS_CERT8.cer
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+    - name: login and print the working directory via ssh
+      shell: id {{username}}
+      register: id
+
+    - name: print the value
+      debug:
+        var: id.stdout_lines
+
+    - name: login Before Blacklisting. (If SSH fails need to validate)
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+
+    - name: print the value of login Before Blacklisting
+      debug:
+        var: ssh.stdout_lines
+
+    - name: Blacklisting all Users
+      shell: realm permit -x {{username}}
+
+    - name: Blacklisting all Groups
+      shell: realm permit -xg {{username}}
+
+    - name: login via ssh to user After Blacklisting
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+      ignore_errors: yes
+
+    - name: Print message based on SSH exit code (improved)
+      debug:
+        msg: "{{ 'All Users are blacklisted' if ssh.rc == 255 else 'Permission Denied' }}"  # Conditional message
+      when: ssh.rc in (255, 5) and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
