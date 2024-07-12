@@ -79,6 +79,7 @@
         - realmd
         - adcli
         - sssd
+        - krb5-workstation
         - authconfig
         - oddjob
         - oddjob-mkhomedir
