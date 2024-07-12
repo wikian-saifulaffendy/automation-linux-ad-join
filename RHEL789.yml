@@ -1,1 +1,82 @@
+---
+- name: Detect and Execute RHEL 6 OS-specific tasks
+  hosts: all
+  gather_facts: yes
+  vars:
+    domain_name: "wikilab.asia"
+    username: "sainath@wikilab.asia"
+    password: "Redhat123"
 
+  tasks:
+  
+    - name: Check if running on RHEL 789
+      fail:
+        msg: "This playbook only runs on RHEL 789 servers."
+      when: ansible_distribution_major_version | int == 6
+      tags: always
+      
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+    
+    - name: Check if user sainath exists in RHEL6
+      shell: getent passwd sainath
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+      
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True      
+    
+    - name: Print success message if RHEL 6 server joined domain
+      debug:
+        msg: "RHEL 6 server joined domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0 
+
+    - name: Install realm package and get realm list
+      shell: |
+            if ! rpm -q realm; then
+            yum install -y realmd || echo "Error: No package realm available"
+            fi
+            realm list | egrep "realm-name|domain-name"
+      register: check_realm
+      failed_when: "'Error: No package realm available' in check_realm.stdout"
+      
+    - name: Print failure message if RHEL 6 server Not joined domain
+      debug:
+        msg: "RHEL 6 server Not joined domain"
+      when: check_user.rc != 0 or check_ldap.rc != 0
+
+    - name: Exit the playbook if RHEL 6 server joined domain
+      meta: end_play
+      when: check_user.rc == 0 and check_ldap.rc == 0
+
+    - name: Installing packages in RHEL 6 server
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - adcli
+        - sssd
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - lsof
+        
+    - name: RHEL 6 server join domain 
+      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
+      register: join_domain
+      ignore_errors: yes
+      no_log: True
