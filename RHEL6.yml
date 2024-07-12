@@ -56,3 +56,14 @@
       meta: end_play
       when: check_user.rc == 0 and check_ldap.rc == 0
 
+    - name: Install adcli package along with sssd
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - adcli
+        - sssd
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - lsof
