@@ -1,1 +1,45 @@
+---
+- name: Detect and Execute RHEL 6 OS-specific tasks
+  hosts: all
+  gather_facts: yes
+  vars:
+    domain_name: "wikilab.asia"
+    username: "sainath@wikilab.asia"
+    password: "Redhat123"
 
+  tasks:
+
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+    
+    - name: Check if user sainath exists in RHEL6
+      shell: getent passwd sainath
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+      when: ansible_distribution_major_version|int == 6
+      
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True      
+      when: ansible_distribution_major_version|int == 6
+    
+    - name: Print success message if all conditions are met
+      debug:
+        msg: "RHEL 6 server joined domain"
+      when:
+      - ansible_distribution_major_version|int == 6
+      - check_user.stdout != ""
+      - check_ldap.stdout != ""
