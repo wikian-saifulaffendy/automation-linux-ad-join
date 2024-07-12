@@ -66,8 +66,10 @@
       when: check_realm.rc != 0
 
     - name: Exit the playbook if RHEL 789 server joined domain
-      meta: end_play
+      fail:
+        msg: "This Server Already Joined Domain."
       when: check_realm.rc == 0
+      tags: always
 
     - name: Install realm package along with sssd
       package:
