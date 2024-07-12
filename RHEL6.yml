@@ -89,7 +89,7 @@
     - name: Copy LDAP CERT
       copy:
         src: testfolder/LDAPS_CERT8.cer
-        dest: /etc/openldap/certs
+        dest: /etc/openldap/cacerts
         mode: "0655"
 
     - name: CERT Rehash in RHLE 6
