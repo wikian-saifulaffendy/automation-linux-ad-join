@@ -52,10 +52,7 @@
         msg: "RHEL 6 server Not joined domain"
       when: check_user.rc != 0 or check_ldap.rc != 0
 
-    - name: Exit the playbook if the previous conditions were met
+    - name: Exit the playbook if RHEL 6 server joined domain
       meta: end_play
-      when:
-     # - ansible_distribution_major_version|int == 6
-      - check_user.stdout != ""
-      - check_ldap.stdout != ""      
+      when: check_user.rc == 0 and check_ldap.rc == 0
 
