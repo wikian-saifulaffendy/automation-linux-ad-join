@@ -56,7 +56,7 @@
       meta: end_play
       when: check_user.rc == 0 and check_ldap.rc == 0
 
-    - name: Install adcli package along with sssd
+    - name: Installing packages in RHEL 6 server
       package:
         name: "{{ item }}"
         state: latest
@@ -67,3 +67,52 @@
         - oddjob
         - oddjob-mkhomedir
         - lsof
+        
+    - name: RHEL 6 server join domain 
+      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
+      register: join_domain
+      ignore_errors: yes
+      no_log: True
+
+    - name: Modify SSSD Configuration in RHEL6
+      copy:
+        src: testfolder/sssd.conf_rhel6
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+
+    - name: Modify ldap Configuration in RHEL6
+      copy:
+        src: testfolder/ldap.conf_rhel6
+        dest: /etc/openldap/ldap.conf
+        mode: "0644"
+
+    - name: Copy LDAP CERT
+      copy:
+        src: testfolder/LDAPS_CERT8.cer
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: CERT Rehash in RHLE 6
+      shell: cacertdir_rehash /etc/openldap/certs
+      when: ansible_distribution_major_version|int == 6
+
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+    - name: Validation AD user ID
+      shell: id {{username}}
+      register: id
+
+    - name: print the value AD user ID
+      debug:
+        var: id.stdout_lines
+
+    - name: login AD user Account 
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+
+    - name: print the value login AD user Account 
+      debug:
+        var: ssh.stdout_lines
