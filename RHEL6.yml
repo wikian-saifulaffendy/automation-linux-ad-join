@@ -43,6 +43,10 @@
       - ansible_distribution_major_version|int == 6
       - check_user.stdout != ""
       - check_ldap.stdout != ""
-    - meta: end_play
-      when: "'RHEL 6 server joined domain' in msg"
+    - name: Exit the playbook if the previous conditions were met
+      meta: end_play
+      when:
+      - ansible_distribution_major_version|int == 6
+      - check_user.stdout != ""
+      - check_ldap.stdout != ""      
 
