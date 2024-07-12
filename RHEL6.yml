@@ -42,13 +42,16 @@
       ignore_errors: True      
       #when: ansible_distribution_major_version|int == 6
     
-    - name: Print success message if all conditions are met
+    - name: Print success message if RHEL 6 server joined domain
       debug:
         msg: "RHEL 6 server joined domain"
-      when:
-     # - ansible_distribution_major_version|int == 6
-      - check_user.rc == 0
-      - check_ldap.rc == 0
+      when: check_user.rc == 0 and check_ldap.rc == 0 
+      
+    - name: Print failure message if RHEL 6 server Not joined domain
+      debug:
+        msg: "RHEL 6 server Not joined domain"
+      when: check_user.rc != 0 or check_ldap.rc != 0
+
     - name: Exit the playbook if the previous conditions were met
       meta: end_play
       when:
