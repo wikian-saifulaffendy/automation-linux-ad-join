@@ -1,5 +1,5 @@
 ---
-- name: Detect and Execute RHEL 6 OS-specific tasks
+- name: Detect and Execute RHEL 789 OS-specific tasks
   hosts: all
   gather_facts: yes
   vars:
@@ -28,7 +28,7 @@
       debug:
         var: ansible_distribution_major_version
     
-    - name: Check if user sainath exists in RHEL6
+    - name: Check if user sainath exists
       shell: getent passwd sainath
       register: check_user
       changed_when: False
@@ -40,25 +40,26 @@
       changed_when: False
       ignore_errors: True      
     
-    - name: Print success message if RHEL 6 server joined domain
-      debug:
-        msg: "RHEL 6 server joined domain"
-      when: check_user.rc == 0 and check_ldap.rc == 0 
-
     - name: Install realm package and get realm list
       shell: |
             if ! rpm -q realm; then
-            yum install -y realmd || echo "Error: No package realm available"
+            yum install -y realmd || echo "Error: No package realmd available"
             fi
             realm list | egrep "realm-name|domain-name"
       register: check_realm
-      failed_when: "'Error: No package realm available' in check_realm.stdout"
-      
-    - name: Print failure message if RHEL 6 server Not joined domain
+      when: check_user.rc != 0 and check_ldap.rc != 0
+      failed_when: "'Error: No package realmd available' in check_realm.stdout"
+
+    - name: Print success message if RHEL 789 server joined domain
       debug:
-        msg: "RHEL 6 server Not joined domain"
+        msg: "RHEL 789 server joined domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0 
+      
+    - name: Print failure message if RHEL 789 server Not joined domain
+      debug:
+        msg: "RHEL 789 server Not joined domain"
       when: check_user.rc != 0 or check_ldap.rc != 0
 
-    - name: Exit the playbook if RHEL 6 server joined domain
+    - name: Exit the playbook if RHEL 789 server joined domain
       meta: end_play
       when: check_user.rc == 0 and check_ldap.rc == 0
