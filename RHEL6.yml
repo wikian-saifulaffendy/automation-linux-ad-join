@@ -33,26 +33,26 @@
       register: check_user
       changed_when: False
       ignore_errors: True
-      when: ansible_distribution_major_version|int == 6
+      #when: ansible_distribution_major_version|int == 6
       
     - name: Check if LDAP port is in use
       shell: lsof -i:636
       register: check_ldap
       changed_when: False
       ignore_errors: True      
-      when: ansible_distribution_major_version|int == 6
+      #when: ansible_distribution_major_version|int == 6
     
     - name: Print success message if all conditions are met
       debug:
         msg: "RHEL 6 server joined domain"
       when:
-      - ansible_distribution_major_version|int == 6
+     # - ansible_distribution_major_version|int == 6
       - check_user.rc == 0
       - check_ldap.rc == 0
     - name: Exit the playbook if the previous conditions were met
       meta: end_play
       when:
-      - ansible_distribution_major_version|int == 6
+     # - ansible_distribution_major_version|int == 6
       - check_user.stdout != ""
       - check_ldap.stdout != ""      
 
