@@ -47,19 +47,19 @@
             fi
             realm list | egrep "realm-name|domain-name"
       register: check_realm
-      when: check_user.rc != 0 and check_ldap.rc != 0
+      when: check_user.rc != 0 or check_ldap.rc != 0
       failed_when: "'Error: No package realmd available' in check_realm.stdout"
 
     - name: Print success message if RHEL 789 server joined domain
       debug:
         msg: "RHEL 789 server joined domain"
-      when: check_user.rc == 0 and check_ldap.rc == 0 
+      when: check_realm.rc == 0
       
     - name: Print failure message if RHEL 789 server Not joined domain
       debug:
         msg: "RHEL 789 server Not joined domain"
-      when: check_user.rc != 0 or check_ldap.rc != 0
+      when: check_realm.rc != 0
 
     - name: Exit the playbook if RHEL 789 server joined domain
       meta: end_play
-      when: check_user.rc == 0 and check_ldap.rc == 0
+      when: check_realm.rc == 0
