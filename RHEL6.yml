@@ -8,7 +8,13 @@
     password: "Redhat123"
 
   tasks:
-
+  
+    - name: Check if running on RHEL 6
+      fail:
+        msg: "This playbook only runs on RHEL 6 servers."
+      when: ansible_distribution_major_version | int != 6
+      tags: always
+      
     - name: Gather OS version and distribution facts
       debug:
         var: ansible_distribution_version
