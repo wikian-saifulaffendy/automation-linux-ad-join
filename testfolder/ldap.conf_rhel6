@@ -7,11 +7,13 @@
 
 #BASE   dc=example,dc=com
 #URI    ldap://ldap.example.com ldap://ldap-master.example.com:666
+#TLS_PROTOCOL_MIN 3.1
 
 #SIZELIMIT      12
 #TIMELIMIT      15
 #DEREF          never
-URI ldap://WIKILABS_AD.wikilab.asia
+
+URI     ldaps://WIKILABS_AD.wikilab.asia
 BASE    dc=wikilab,dc=asia
-TLS_CACERTDIR /etc/openldap/certs
+TLS_CACERTDIR /etc/openldap/cacerts
 TLS_REQCERT demand
