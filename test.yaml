@@ -1,5 +1,5 @@
 ---
-- name: Detect and Execute RHEL 789 OS-specific tasks
+- name: Detect and Execute SUSE OS-specific tasks
   hosts: all
   gather_facts: yes
   vars:
@@ -7,12 +7,13 @@
     username: "sainath@wikilab.asia"
     password: "Redhat123"
 
+
   tasks:
   
-    - name: Check if running on RHEL 789
+    - name: Check if running on SUSE
       fail:
-        msg: "This playbook only runs on RHEL 789 servers."
-      when: ansible_distribution_major_version | int == 6
+        msg: "This playbook only runs on SUSE 12 & 15 servers."
+      when: ansible_distribution_major_version | int == 11
       tags: always
       
     - name: Gather OS version and distribution facts
@@ -27,8 +28,9 @@
     - name: Print the OS major version
       debug:
         var: ansible_distribution_major_version
-    
-    - name: Check if user sainath exists
+
+ #Prechecks to Join Domain       
+    - name: Check if user sainath
       shell: getent passwd sainath
       register: check_user
       changed_when: False
@@ -38,116 +40,94 @@
       shell: lsof -i:636
       register: check_ldap
       changed_when: False
-      ignore_errors: True      
-    
-    - name: Install realm package
-      shell: |
-            if ! rpm -q realmd; then
-            yum install -y realmd || echo "Error: No package realmd available"
-            fi
-      register: check_realmpkg
-      failed_when: "'Error: No package realmd available' in check_realmpkg.stdout"
+      ignore_errors: True
 
-    - name: Check realm list
-      shell: realm list | egrep "realm-name|domain-name"
-      register: check_realm
-      changed_when: False
-      ignore_errors: True 
-      when: check_realmpkg.stderr == ""
-
-    - name: Print success message if RHEL 789 server joined domain
+    - name: Print success message if SUSE server joined domain
       debug:
-        msg: "RHEL 789 server joined domain"
-      when: check_realm.rc == 0
-      
-    - name: Print failure message if RHEL 789 server Not joined domain
-      debug:
-        msg: "RHEL 789 server Not joined domain"
-      when: check_realm.rc != 0
+        msg: "SUSE server joined domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0
 
-    - name: Exit the playbook if RHEL 789 server joined domain
+    - name: Print failure message if SUSE server Not joined domain
+      debug:
+        msg: "SUSE server Not joined domain"
+      when: check_user.rc != 0 or check_ldap.rc != 0
+
+    - name: Exit the playbook if SUSE server joined domain
       fail:
         msg: "This Server Already Joined Domain."
-      when: check_realm.rc == 0
+      when: check_user.rc == 0 and check_ldap.rc == 0
       tags: always
+      
+#Install necessary packages
+    - name: Install packages on SLES 12
+      when: ansible_distribution_major_version | int == 12
+      block:
+        - name: Install packages
+          command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools
+          
+        - name: Copy realm RPM file to temporary directory
+          copy:
+            src: testfolder/realmd-0.16.3-lp151.2.4.x86_64.rpm
+            dest: /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
 
-    - name: Install realm package along with sssd
-      package:
-        name: "{{ item }}"
-        state: latest
-      with_items:
-        - realmd
-        - adcli
-        - sssd
-        - krb5-workstation
-        - authconfig
-        - oddjob
-        - oddjob-mkhomedir
-        - samba-common-tools
-        - lsof
+        - name: Install realm RPM using rpm command
+          command: rpm -ivh /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+          ignore_errors: yes
 
-    - name: Join domain (RHEL 7, 8, 9)
-      shell: echo "{{password}}" | realm join {{domain_name}} -U sainath --verbose
-      register: join_domain
-      ignore_errors: yes
+        - name: Join domain
+          shell: echo -n "{{ password }}" | adcli join {{ domain_name }} -U sainath -v --stdin-password
+          register: join_domain
+          changed_when: False
+          no_log: true
 
-    - name: Modify SSSD Configuration in RHEL7, 8 and 9
-      copy:
-        src: testfolder/sssd.conf
-        dest: /etc/sssd/
-        mode: "0600"
+        - name: Modify SSSD Configuration
+          copy:
+            src: sssd.conf_suse12
+            dest: /etc/sssd/sssd.conf
+            mode: "0600"
 
-    - name: Add cert path to the ldap.conf in RHEL7, 8 and 9
-      lineinfile:
-        path: /etc/openldap/ldap.conf
-        insertafter: BOF
-        line: 'TLS_CACERT      /etc/openldap/certs/LDAPS_CERT8.cer'
-        state: present
+        - name: Take a backup of the original nsswitch.conf file
+          copy:
+            src: /etc/nsswitch.conf
+            dest: /etc/nsswitch.conf.backup__{{ ansible_date_time.date }}_{{ ansible_date_time.time }}
+            remote_src: yes
+            backup: yes
 
-    - name: start and enable oddjobd.service
-      service:
-        name: oddjobd.service
-        state: started
-        enabled: yes
-    - name: Copy LDAP CERT
-      copy:
-        src: testfolder/LDAPS_CERT8.cer
-        dest: /etc/openldap/certs
-        mode: "0655"
+        - name: Update nsswitch.conf configuration file
+          ansible.builtin.replace:
+            path: /etc/nsswitch.conf
+            regexp: "{{ item.regexp }}"
+            replace: "{{ item.replace }}"
+          loop:
+            - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+            - { regexp: '^group:.*', replace: 'group: compat sss' }
+            - { regexp: '^shadow:.*', replace: 'shadow: compat sss' }
 
-    - name: Restart sssd
-      service:
-        name: sssd
-        state: restarted
+    - name: Install packages on SLES 15
+      when: ansible_distribution_major_version | int == 15
+      block:
+        - name: Install packages
+          command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools realmd
 
-    - name: login and print the working directory via ssh
-      shell: id {{username}}
-      register: id
+        - name: Join domain
+          shell: echo -n "{{ password }}" | adcli join {{ domain_name }} -U sainath -v --stdin-password
+          register: join_domain
+          changed_when: False
+          no_log: true
 
-    - name: print the value
-      debug:
-        var: id.stdout_lines
+        - name: Modify SSSD Configuration
+          copy:
+            src: testfolder/sssd.conf
+            dest: /etc/sssd/sssd.conf
+            mode: "0600"
 
-    - name: login Before Blacklisting. (If SSH fails need to validate)
-      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
-      register: ssh
+        - name: Check realm list
+          shell: realm list | egrep "realm-name|domain-name"
+          register: check_realm
+          changed_when: False
+          ignore_errors: true
 
-    - name: print the value of login Before Blacklisting
-      debug:
-        var: ssh.stdout_lines
-
-    - name: Blacklisting all Users
-      shell: realm permit -x {{username}}
-
-    - name: Blacklisting all Groups
-      shell: realm permit -xg {{username}}
-
-    - name: login via ssh to user After Blacklisting
-      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
-      register: ssh
-      ignore_errors: yes
-
-    - name: Print message based on SSH exit code (improved)
-      debug:
-        msg: "{{ 'All Users are blacklisted' if ssh.rc == 255 else 'Permission Denied' }}"  # Conditional message
-      when: ssh.rc in (255, 5) and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+        - name: Print success message if domain join was successful
+          debug:
+            msg: "Successfully joined the domain {{ domain_name }}"
+          when: check_realm.rc == 0
