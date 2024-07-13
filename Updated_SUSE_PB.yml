@@ -90,17 +90,26 @@
       changed_when: False
       #no_log: True
 
-    - name: Modify SSSD Configuration
+    - name: Modify SSSD Configuration SUSE 15
       copy:
         src: testfolder/sssd.conf
         dest: /etc/sssd/sssd.conf
         mode: "0600"
+      when: ansible_distribution_major_version|int == 15
+
+    - name: Modify SSSD Configuration SUSE 12
+      copy:
+        src: sssd.conf_suse12
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"      
+      when: ansible_distribution_major_version|int == 12
         
     - name: Check realm list
       shell: realm list | egrep "realm-name|domain-name"
       register: check_realm
       changed_when: False
       ignore_errors: True 
+      when: ansible_distribution_major_version|int == 15
       
     - name: Print success message if domain join was successful
       debug:
