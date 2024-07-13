@@ -85,7 +85,7 @@
 #        mode: "0644"
 
     - name: Join domain (SUSE 12 and 15)
-      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
+      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U sainath -v --stdin-password
       register: join_domain
       changed_when: False
       #no_log: True
