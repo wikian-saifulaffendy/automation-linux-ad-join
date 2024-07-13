@@ -6,6 +6,7 @@
     domain_name: "wikilab.asia"
     username: "sainath@wikilab.asia"
     password: "Redhat123"
+    ansible_python_interpreter: /usr/bin/python2.7
 
   tasks:
   
