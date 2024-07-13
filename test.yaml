@@ -62,7 +62,7 @@
     - name: Install packages on SLES 12
       when: ansible_distribution_major_version | int == 12
       block:
-        - name: Install packages
+        - name: Install packages on SLES 12
           command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools
           
         - name: Copy realm RPM file to temporary directory
@@ -82,9 +82,20 @@
 
         - name: Modify SSSD Configuration
           copy:
-            src: sssd.conf_suse12
+            src: testfolder/sssd.conf_rhel6
             dest: /etc/sssd/sssd.conf
             mode: "0600"
+        
+        - name: Copy LDAP CERT
+          copy:
+            src: testfolder/LDAPS_CERT8.cer
+            dest: /etc/openldap/
+        
+        - name: Disable NSCD socket
+          service:
+            name: nscd
+            enabled: no
+            state: stopped
 
         - name: Take a backup of the original nsswitch.conf file
           copy:
@@ -102,11 +113,17 @@
             - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
             - { regexp: '^group:.*', replace: 'group: compat sss' }
             - { regexp: '^shadow:.*', replace: 'shadow: compat sss' }
-
+           
+        - name: Add pam-config for SSS
+          command: pam-config -a --sss
+          
+        - name: Add pam-config for creating home directories
+          command: pam-config -a --mkhomedir
+     
     - name: Install packages on SLES 15
       when: ansible_distribution_major_version | int == 15
       block:
-        - name: Install packages
+        - name: Install packages on SLES 15
           command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools realmd
 
         - name: Join domain
@@ -131,3 +148,19 @@
           debug:
             msg: "Successfully joined the domain {{ domain_name }}"
           when: check_realm.rc == 0
+
+#Post validation of Join Domain       
+    - name: Check ID for AD user
+      shell: getent passwd sainath
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+    
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True           
+           
+          
+           
