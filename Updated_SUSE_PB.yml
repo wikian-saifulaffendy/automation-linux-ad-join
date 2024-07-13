@@ -38,9 +38,16 @@
       shell: lsof -i:636
       register: check_ldap
       changed_when: False
-      ignore_errors: True      
-    
+      ignore_errors: True
+
+    - name: Check if klist to list cached Kerberos credentials.
+      shell: klist -kte
+      register: check_klist
+      changed_when: False
+      ignore_errors: True
+      when: ansible_distribution_major_version|int == 12 and (check_user.rc != 0 or check_ldap.rc != 0)
+
     - name: Print success message if SUSE server joined domain
       debug:
-        msg: "SUSE server joined domain"
-      when: check_user.rc == 0 and check_ldap.rc == 0 
+        msg: "SUSE servers joined domain"
+      when:  check_klist.rc ==0
