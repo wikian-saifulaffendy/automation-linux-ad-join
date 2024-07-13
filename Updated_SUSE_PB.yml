@@ -28,7 +28,8 @@
     - name: Print the OS major version
       debug:
         var: ansible_distribution_major_version
-        
+
+ #Prechecks to Join Domain       
     - name: Check if user sainath
       shell: getent passwd sainath
       register: check_user
@@ -56,3 +57,43 @@
         msg: "This Server Already Joined Domain."
       when: check_user.rc == 0 and check_ldap.rc == 0
       tags: always
+
+#Install necessary packages
+    - name: Install packages on SLES 15
+      command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools realmd
+      when: ansible_distribution_major_version|int == 15
+
+    - name: Install packages on SLES 12
+      command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools
+      when: ansible_distribution_major_version|int == 12
+      
+    - name: Copy realm RPM file to temporary directory
+      copy:
+        src: testfolder/realmd-0.16.3-lp151.2.4.x86_64.rpm
+        dest: /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+      when: ansible_distribution_major_version|int == 12
+
+    - name: Install realm RPM using rpm command
+      command: rpm -ivh /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
+      ignore_errors: yes
+      when: ansible_distribution_major_version|int == 12
+
+    - name: Update the Krb5 configuration
+      copy:
+        src: testfolder/krb5.conf
+        dest: /etc/krb5.conf
+        mode: "0644"
+
+    - name: Join domain (SUSE 12 and 15)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      changed_when: False
+      ignore_errors: yes
+      no_log: True
+
+    - name: Print success message if domain join was successful
+      debug:
+        msg: "Successfully joined the domain {{ domain_name }}"
+      when: join_domain.rc == 0
+
+
