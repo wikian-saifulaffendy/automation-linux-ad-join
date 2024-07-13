@@ -89,7 +89,7 @@
       register: join_domain
       changed_when: False
       ignore_errors: yes
-      no_log: True
+      #no_log: True
 
     - name: Print success message if domain join was successful
       debug:
