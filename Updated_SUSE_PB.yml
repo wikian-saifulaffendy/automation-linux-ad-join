@@ -85,12 +85,17 @@
 #        mode: "0644"
 
     - name: Join domain (SUSE 12 and 15)
-      shell: echo "{{password}}" | realm join {{domain_name}} -U sainath --verbose
+      shell: echo -n "{{password}}" | adcli join {{domain_name}} -U {{username}} -v --stdin-password
       register: join_domain
       changed_when: False
-      ignore_errors: yes
       #no_log: True
 
+    - name: Modify SSSD Configuration
+      copy:
+        src: testfolder/sssd.conf
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+        
     - name: Check realm list
       shell: realm list | egrep "realm-name|domain-name"
       register: check_realm
