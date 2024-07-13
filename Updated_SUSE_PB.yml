@@ -101,7 +101,6 @@
       register: check_realm
       changed_when: False
       ignore_errors: True 
-      when: check_realmpkg.stderr == ""
       
     - name: Print success message if domain join was successful
       debug:
