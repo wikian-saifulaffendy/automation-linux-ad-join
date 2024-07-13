@@ -28,7 +28,7 @@
       debug:
         var: ansible_distribution_major_version
     
-    - name: Check if user sainath exists in RHEL6
+    - name: Check if user sainath
       shell: getent passwd sainath
       register: check_user
       changed_when: False
