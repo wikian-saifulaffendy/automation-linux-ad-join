@@ -43,9 +43,15 @@
     - name: Print success message if SUSE server joined domain
       debug:
         msg: "SUSE servers joined domain"
-      when:  when: check_user.rc == 0 and check_ldap.rc == 0
+      when: check_user.rc == 0 and check_ldap.rc == 0
 
     - name: Print failure message if SUSE server Not joined domain
       debug:
         msg: "SUSE server Not joined domain"
       when: check_user.rc != 0 or check_ldap.rc != 0
+
+    - name: Exit the playbook if SUSE server joined domain
+      fail:
+        msg: "This Server Already Joined Domain."
+      when: check_user.rc == 0 and check_ldap.rc == 0
+      tags: always
