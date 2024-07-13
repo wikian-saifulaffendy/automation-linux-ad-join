@@ -1,19 +1,19 @@
 ---
-- name: Detect and Execute RHEL 6 OS-specific tasks
+- name: Detect and Execute SUSE OS-specific tasks
   hosts: all
   gather_facts: yes
   vars:
     domain_name: "wikilab.asia"
     username: "sainath@wikilab.asia"
     password: "Redhat123"
-    #ansible_python_interpreter: /usr/bin/python2.7
+
 
   tasks:
   
-    - name: Check if running on RHEL 6
+    - name: Check if running on SUSE
       fail:
-        msg: "This playbook only runs on RHEL 6 servers."
-      when: ansible_distribution_major_version | int == 11 
+        msg: "This playbook only runs on SUSE 12 & 15 servers."
+      when: ansible_distribution_major_version | int == 11
       tags: always
       
     - name: Gather OS version and distribution facts
@@ -28,3 +28,19 @@
     - name: Print the OS major version
       debug:
         var: ansible_distribution_major_version
+    - name: Check if user sainath
+      shell: getent passwd sainath
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+      
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True      
+    
+    - name: Print success message if SUSE server joined domain
+      debug:
+        msg: "SUSE server joined domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0 
