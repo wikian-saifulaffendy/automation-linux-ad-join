@@ -51,3 +51,8 @@
       debug:
         msg: "SUSE servers joined domain"
       when:  check_klist.rc ==0
+
+    - name: Print failure message if SUSE server Not joined domain
+      debug:
+        msg: "SUSE server Not joined domain"
+      when: check_klist.rc != 0
