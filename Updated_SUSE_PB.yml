@@ -107,4 +107,21 @@
         msg: "Successfully joined the domain {{ domain_name }}"
       when: check_realm.rc == 0
 
-
+    - name: Take a backup of the original nsswitch.conf file
+      copy:
+        src: /etc/nsswitch.conf
+        dest: /etc/nsswitch.conf.backup__{{current_datetime.stdout}}
+        remote_src: yes
+        backup: yes
+      when: ansible_distribution_major_version|int == 12
+      
+    - name: Update nsswitch.conf configuration file
+      ansible.builtin.replace:
+        path: /etc/nsswitch.conf
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop:
+        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+        - { regexp: '^group:.*', replace: 'group: compact sss' }
+        - { regexp: '^shadow:.*', replace: 'shadow: compact sss' }
+      when: ansible_distribution_major_version|int == 12
