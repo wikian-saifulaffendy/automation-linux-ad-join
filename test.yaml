@@ -161,6 +161,18 @@
       register: check_ldap
       changed_when: False
       ignore_errors: True           
-           
-          
+
+    - name: Copy both sshpass RPM files to /tmp
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: '/path/to/sshpass-1.06-1.el6.x86_64.rpm', dest: '/tmp/sshpass-1.06-1.el6.x86_64.rpm' }
+        - { src: '/path/to/sshpass-1.06-bp153.1.16.x86_64.rpm', dest: '/tmp/sshpass-1.06-bp153.1.16.x86_64.rpm' }
+        
+    - name: Install sshpass package for SLES 12 or 15
+      rpm:
+        name: "{{ 'sshpass-1.06-1.el6.x86_64.rpm' if ansible_distribution_major_version | int == 12 else 'sshpass-1.06-bp153.1.16.x86_64.rpm' }}"
+        state: present
+      when: ansible_distribution_major_version | int in [12, 15]          
            
