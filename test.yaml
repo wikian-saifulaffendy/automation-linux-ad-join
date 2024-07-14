@@ -178,4 +178,11 @@
           rpm -ivh /path/to/sshpass-1.06-bp153.1.16.x86_64.rpm
         fi
       when: ansible_distribution_major_version | int in [12, 15]         
-           
+
+    - name: login AD user Account 
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+
+    - name: print the value login AD user Account 
+      debug:
+        var: ssh.stdout_lines           
