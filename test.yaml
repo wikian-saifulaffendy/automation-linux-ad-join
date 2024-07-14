@@ -89,7 +89,8 @@
           shell: echo -n "{{ password }}" | adcli join {{ domain_name }} -U sainath -v --stdin-password
           register: join_domain
           changed_when: False
-          no_log: true
+          ignore_errors: yes
+          #no_log: true
 
         - name: Modify SSSD Configuration
           copy:
@@ -141,7 +142,8 @@
           shell: echo -n "{{ password }}" | adcli join {{ domain_name }} -U sainath -v --stdin-password
           register: join_domain
           changed_when: False
-          no_log: true
+          ignore_errors: yes
+          #no_log: true
 
         - name: Modify SSSD Configuration
           copy:
