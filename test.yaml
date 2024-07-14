@@ -62,7 +62,7 @@
       copy:
         src: testfolder/ldap.conf_suse
         dest: /etc/openldap/ldap.conf
-      mode: "0644"
+        mode: "0644"
           
     - name: Copy LDAP CERT
       copy:
