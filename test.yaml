@@ -57,7 +57,18 @@
         msg: "This Server Already Joined Domain."
       when: check_user.rc == 0 and check_ldap.rc == 0
       tags: always
-      
+
+    - name: Modify ldap Configuration
+      copy:
+        src: testfolder/ldap.conf_suse
+        dest: /etc/openldap/ldap.conf
+      mode: "0644"
+          
+    - name: Copy LDAP CERT
+      copy:
+        src: testfolder/LDAPS_CERT8.cer
+        dest: /etc/openldap/
+    
 #Install necessary packages
     - name: Install packages on SLES 12
       when: ansible_distribution_major_version | int == 12
@@ -148,7 +159,7 @@
           debug:
             msg: "Successfully joined the domain {{ domain_name }}"
           when: check_realm.rc == 0
-
+          
 #Post validation of Join Domain       
     - name: Check ID for AD user
       shell: getent passwd sainath
