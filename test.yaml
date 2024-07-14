@@ -180,15 +180,15 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
       with_items:
-        - { src: '/path/to/sshpass-1.06-1.el6.x86_64.rpm', dest: '/tmp/sshpass-1.06-1.el6.x86_64.rpm' }
-        - { src: '/path/to/sshpass-1.06-bp153.1.16.x86_64.rpm', dest: '/tmp/sshpass-1.06-bp153.1.16.x86_64.rpm' }
+        - { src: 'testfolder/sshpass-1.06-2.1.x86_64.rpm', dest: '/tmp/' }
+        - { src: 'testfolder/sshpass-1.06-bp153.1.16.x86_64.rpm', dest: '/tmp/' }
         
     - name: Install sshpass package
       shell: |
         if [ "{{ ansible_distribution_major_version | int }}" -eq 12 ]; then
-          rpm -ivh /path/to/sshpass-1.06-1.el6.x86_64.rpm
+          rpm -ivh /tmp/sshpass-1.06-2.1.x86_64.rpm
         elif [ "{{ ansible_distribution_major_version | int }}" -eq 15 ]; then
-          rpm -ivh /path/to/sshpass-1.06-bp153.1.16.x86_64.rpm
+          rpm -ivh /tmp/sshpass-1.06-bp153.1.16.x86_64.rpm
         fi
       when: ansible_distribution_major_version | int in [12, 15]         
 
