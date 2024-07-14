@@ -1,5 +1,5 @@
 ---
-- name: Detect and Execute SUSE OS-specific tasks
+- name: Detect and Execute SUSE 12 & 15 OS-specific tasks
   hosts: all
   gather_facts: yes
   vars:
@@ -10,7 +10,7 @@
 
   tasks:
   
-    - name: Check if running on SUSE
+    - name: Check if running on SUSE 12 & 15
       fail:
         msg: "This playbook only runs on SUSE 12 & 15 servers."
       when: ansible_distribution_major_version | int == 11
