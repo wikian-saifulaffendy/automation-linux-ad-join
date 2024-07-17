@@ -50,7 +50,7 @@
     - name: Print the message if port 636 is not listening
       debug:
         msg: "Port 636 is not listening on {{ ansible_facts['fqdn'] }}"
-      when: lsof_result.rc != 0
+      when: check_ldap.rc != 0
 
     - name: Print success message if SUSE server joined domain
       debug:
