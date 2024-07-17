@@ -35,12 +35,22 @@
       register: check_user
       changed_when: False
       ignore_errors: True
+
+    - name: Print message if user sainath does not exist
+      debug:
+        msg: "User 'sainath' does not exist on {{ ansible_facts['fqdn'] }}"
+      when: check_user.rc != 0
       
     - name: Check if LDAP port is in use
       shell: lsof -i:636
       register: check_ldap
       changed_when: False
       ignore_errors: True
+
+    - name: Print the message if port 636 is not listening
+      debug:
+        msg: "Port 636 is not listening on {{ ansible_facts['fqdn'] }}"
+      when: lsof_result.rc != 0
 
     - name: Print success message if SUSE server joined domain
       debug:
