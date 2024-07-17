@@ -51,7 +51,7 @@
           Prechecks passed, proceeding with domain join
           {% endif %}
     
-    - name: Exit the playbook if prechecks fail
+    - name: Exit the playbook if Server Already Joined Domain
       fail:
         msg: "This Server Already Joined Domain."
       when: check_user.rc == 0 and check_ldap.rc == 0
