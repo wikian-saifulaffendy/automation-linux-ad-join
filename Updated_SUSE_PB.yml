@@ -33,24 +33,23 @@
       register: check_user
       changed_when: False
       ignore_errors: True
+    
+    - name: Print failure message if AD user check failed
+      debug:
+        msg: "Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}"
+      when: check_user.rc != 0
 
     - name: Check if LDAP port is in use
       shell: lsof -i:636
       register: check_ldap
       changed_when: False
       ignore_errors: True
-
-    - name: Print the result of prechecks
-      debug:
-        msg: >-
-          {% if check_user.rc != 0 %}
-          User 'sainath' does not exist on {{ ansible_facts['fqdn'] }}
-          {% elif check_ldap.rc != 0 %}
-          Port 636 is not listening on {{ ansible_facts['fqdn'] }}
-          {% else %}
-          Prechecks passed, proceeding with domain join
-          {% endif %}
     
+    - name: Print failure message if LDAP port check failed
+      debug:
+        msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
+      when: check_ldap.rc != 0 
+      
     - name: Exit the playbook if Server Already Joined Domain
       fail:
         msg: "This Server Already Joined Domain."
@@ -158,19 +157,7 @@
             name: sssd
             state: restarted        
 
-    # Post validation of Join Domain       
-    - name: Check ID for AD user
-      shell: getent passwd sainath
-      register: check_user
-      changed_when: False
-      ignore_errors: True
-    
-    - name: Check if LDAP port is in use
-      shell: lsof -i:636
-      register: check_ldap
-      changed_when: False
-      ignore_errors: True
-
+    # Post validation of Join Domain
     - name: Copy both sshpass RPM files to /tmp
       copy:
         src: "{{ item.src }}"
@@ -188,6 +175,18 @@
         fi
       when: ansible_distribution_major_version | int in [12, 15]
       changed_when: False
+      
+    - name: Check ID for AD user
+      shell: getent passwd sainath
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+    
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True
 
     - name: login AD user Account 
       shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
@@ -198,15 +197,22 @@
       debug:
         var: ssh.stdout_lines
 
-    - name: Print result of all checks
+    - name: Print success message if all conditions are met
       debug:
-        msg: >-
-          {% if check_user.rc != 0 %}
-          Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}
-          {% elif check_ldap.rc != 0 and ansible_distribution_major_version | int in [12, 15] %}
-          Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
-          {% elif ssh.rc != 0 %}
-          Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
-          {% else %}
-          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
-          {% endif %}
+        msg: "Successfully joined server {{ ansible_facts['fqdn'] }} to the domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0
+
+    - name: Print failure message if AD user check failed
+      debug:
+        msg: "Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}"
+      when: check_user.rc != 0
+
+    - name: Print failure message if LDAP port check failed
+      debug:
+        msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
+      when: check_ldap.rc != 0 and ansible_distribution_major_version | int in [12, 15]
+
+    - name: Print failure message if AD user login failed
+      debug:
+        msg: "Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}"
+      when: ssh.rc != 0
