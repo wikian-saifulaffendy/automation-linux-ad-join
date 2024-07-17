@@ -214,17 +214,13 @@
     - name: Print result LDAP port is in use
       debug:
         msg: >-
-          {% if check_ldap.rc != 0 %}
+          {% if ssh.rc != 0 %}
           Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
           {% else %}
           Check Pass: Login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}"
           {% endif %}
 
-    - name: Print the value login AD user Account 
-      debug:
-        var: ssh.stdout_lines
-
-    - name: Print result LDAP port is in use
+    - name: Print result of all checks
       debug:
         msg: >-
           {% if check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0 %}
