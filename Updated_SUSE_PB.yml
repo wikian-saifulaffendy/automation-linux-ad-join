@@ -169,7 +169,7 @@
     - name: Install sshpass package
       shell: |
         if [ "{{ ansible_distribution_major_version | int }}" -eq 12 ]; then
-          rpm -ivhzypper --non-interactive install /tmp/sshpass-1.06-2.1.x86_64.rpm
+          zypper --non-interactive install /tmp/sshpass-1.06-2.1.x86_64.rpm
         elif [ "{{ ansible_distribution_major_version | int }}" -eq 15 ]; then
           zypper --non-interactive install /tmp/sshpass-1.06-bp153.1.16.x86_64.rpm
         fi
@@ -181,6 +181,15 @@
       register: check_user
       changed_when: False
       ignore_errors: True
+
+    - name: Print result ID for AD user
+      debug:
+        msg: >-
+          {% if check_user.rc != 0 %}
+          Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: AD user 'sainath' exist on {{ ansible_facts['fqdn'] }}
+          {% endif %}
     
     - name: Check if LDAP port is in use
       shell: lsof -i:636
@@ -188,31 +197,39 @@
       changed_when: False
       ignore_errors: True
 
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if check_ldap.rc != 0 %}
+          Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: LDAP port 636 is listening on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+
     - name: login AD user Account 
       shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
       register: ssh
       ignore_errors: True
 
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if check_ldap.rc != 0 %}
+          Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: Login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}"
+          {% endif %}
+
     - name: Print the value login AD user Account 
       debug:
         var: ssh.stdout_lines
 
-    - name: Print success message if all conditions are met
+    - name: Print result LDAP port is in use
       debug:
-        msg: "Successfully joined server {{ ansible_facts['fqdn'] }} to the domain"
-      when: check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0
-
-    - name: Print failure message if AD user check failed
-      debug:
-        msg: "Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}"
-      when: check_user.rc != 0
-
-    - name: Print failure message if LDAP port check failed
-      debug:
-        msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
-      when: check_ldap.rc != 0 and ansible_distribution_major_version | int in [12, 15]
-
-    - name: Print failure message if AD user login failed
-      debug:
-        msg: "Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}"
-      when: ssh.rc != 0
+        msg: >-
+          {% if check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0 %}
+          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
+          {% else %}
+          Failed joined server {{ ansible_facts['fqdn'] }} to the domain, Check manually.
+          {% endif %}
+        
