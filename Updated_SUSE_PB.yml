@@ -226,6 +226,6 @@
           {% if check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0 %}
           Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
           {% else %}
-          Failed joined server {{ ansible_facts['fqdn'] }} to the domain, Check manually.
+          Failed joined server {{ ansible_facts['fqdn'] }} to the domain, Check manually or rerun playbook.
           {% endif %}
         
