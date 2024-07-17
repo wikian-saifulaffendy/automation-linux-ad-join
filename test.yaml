@@ -85,6 +85,7 @@
       block:
         - name: Install packages on SLES 12
           command: zypper --non-interactive install adcli sssd sssd-ldap sssd-ad sssd-tools
+          changed_when: False
           
         - name: Copy realm RPM file to temporary directory
           copy:
@@ -93,7 +94,7 @@
 
         - name: Install realm RPM using rpm command
           command: zypper --non-interactive install /tmp/realmd-0.16.3-lp151.2.4.x86_64.rpm
-          ignore_errors: yes
+          changed_when: False
 
         - name: Join domain
           shell: echo -n "{{ password }}" | adcli join {{ domain_name }} -U sainath -v --stdin-password
@@ -107,12 +108,7 @@
             src: testfolder/sssd.conf_rhel6
             dest: /etc/sssd/sssd.conf
             mode: "0600"
-        
-        - name: Copy LDAP CERT
-          copy:
-            src: testfolder/LDAPS_CERT8.cer
-            dest: /etc/openldap/
-        
+         
         - name: Disable NSCD socket
           service:
             name: nscd
@@ -200,12 +196,27 @@
         elif [ "{{ ansible_distribution_major_version | int }}" -eq 15 ]; then
           zypper --non-interactive install /tmp/sshpass-1.06-bp153.1.16.x86_64.rpm
         fi
-      when: ansible_distribution_major_version | int in [12, 15]         
+      when: ansible_distribution_major_version | int in [12, 15]
+      changed_when: False
 
     - name: login AD user Account 
       shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
       register: ssh
+      ignore_errors: True
 
     - name: print the value login AD user Account 
       debug:
-        var: ssh.stdout_lines           
+        var: ssh.stdout_lines
+
+    - name: Print result of all checks
+      debug:
+        msg: >-
+          {% if check_user.rc != 0 %}
+          Check failed: AD user 'sainath' does not exist on {{ ansible_facts['fqdn'] }}
+          {% elif check_ldap.rc != 0 and ansible_distribution_major_version | int in [12, 15] %}
+          Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
+          {% elif ssh.rc != 0 %}
+          Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
+          {% endif %}
