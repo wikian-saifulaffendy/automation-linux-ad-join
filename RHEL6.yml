@@ -41,6 +41,17 @@
       changed_when: False
       ignore_errors: True      
       #when: ansible_distribution_major_version|int == 6
+
+    - name: Print the result of prechecks
+      debug:
+        msg: >-
+          {% if check_user.rc != 0 %}
+          User 'sainath' does not exist on {{ ansible_facts['fqdn'] }}
+          {% elif check_ldap.rc != 0 %}
+          Port 636 is not listening on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Prechecks passed, proceeding with domain join
+          {% endif %}
     
     - name: Print success message if RHEL 6 server joined domain
       debug:
