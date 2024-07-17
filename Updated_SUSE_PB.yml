@@ -55,6 +55,7 @@
       fail:
         msg: "This Server Already Joined Domain."
       when: check_user.rc == 0 and check_ldap.rc == 0
+      changed_when: False
       tags: always
 
     - name: Modify ldap Configuration
