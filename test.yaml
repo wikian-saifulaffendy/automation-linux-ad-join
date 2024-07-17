@@ -163,20 +163,9 @@
 
         - name: Modify SSSD Configuration
           copy:
-            src: testfolder/sssd.conf
+            src: testfolder/sssd.conf_rhel6
             dest: /etc/sssd/sssd.conf
             mode: "0600"
-
-        - name: Check realm list
-          shell: realm list | egrep "realm-name|domain-name"
-          register: check_realm
-          changed_when: False
-          ignore_errors: true
-
-        - name: Print success message if domain join was successful
-          debug:
-            msg: "Successfully joined the domain {{ domain_name }}"
-          when: check_realm.rc == 0
 
         - name: Restart sssd
           service:
