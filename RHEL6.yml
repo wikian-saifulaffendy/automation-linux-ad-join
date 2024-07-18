@@ -111,7 +111,14 @@
       service:
         name: sssd
         state: restarted
-
+        
+    - name: Copy both sshpass RPM files to /tmp
+      copy:
+        src: sshpass-1.06-1.el6.x86_64.rpm
+        dest: /tmp
+        
+    - name: Install sshpass package
+      shell: yum install /tmp/sshpass-1.06-1.el6.x86_64.rpm -y
     - name: Validation AD user ID
       shell: id {{username}}
       register: id
