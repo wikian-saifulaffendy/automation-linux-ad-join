@@ -38,7 +38,7 @@
             path: /etc/krb5.conf
             block: |
               [libdefaults]
-                  default_realm = .ISDDC.WIKILAB.ASIA
+                  default_realm = .WIKILAB.ASIA
                   dns_lookup_realm = false
                   dns_lookup_kdc = true
 
@@ -65,7 +65,7 @@
             path: /etc/samba/smb.conf
             block: |
               [global]
-                 realm = ISDDC.WIKILAB.ASIA
+                 realm = WIKILAB.ASIA
                  workgroup = ISDDC
                  security = ADS
                  server string = Solaris Samba Server
@@ -123,7 +123,7 @@
         enabled: yes
 
     - name: Join the server to the domain
-      command: net ads join -U mvenkata
+      command: net ads join -U sainath
       register: join_output
       failed_when: "join_output.rc != 0"
       ignore_errors: yes
