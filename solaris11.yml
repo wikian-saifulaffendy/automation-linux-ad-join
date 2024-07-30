@@ -78,12 +78,23 @@
 
     - name: Backup and edit /etc/samba/smb.conf
       block:
+        - name: Check if /etc/samba/smb.conf exists
+          stat:
+            path: /etc/samba/smb.conf
+          register: smb_conf_stat
+          
         - name: Backup /etc/samba/smb.conf
           copy:
             src: /etc/samba/smb.conf
             dest: /etc/samba/smb.conf.bak
             backup: yes
-
+          when: smb_conf_stat.stat.exists
+        
+        - name: Debug message when file does not exist
+          debug:
+            msg: "/etc/samba/smb.conf does not exist, skipping backup."
+          when: not smb_conf_stat.stat.exists
+          
         - name: Configure /etc/samba/smb.conf
           blockinfile:
             path: /etc/samba/smb.conf
