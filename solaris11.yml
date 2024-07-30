@@ -1,0 +1,175 @@
+---
+- name: Configure Samba and Winbind on Solaris
+  hosts: all
+  become: yes
+  tasks:
+    - name: Backup and edit /etc/resolv.conf
+      block:
+        - name: Backup /etc/resolv.conf
+          copy:
+            src: /etc/resolv.conf
+            dest: /etc/resolv.conf.bak
+            backup: yes
+
+        - name: Update /etc/resolv.conf with DNS settings
+          lineinfile:
+            path: /etc/resolv.conf
+            state: present
+            line: "{{ item }}"
+          loop:
+            - "search wikilab.asia"
+            - "nameserver 192.168.1.36"
+
+      rescue:
+        - name: Fail when /etc/resolv.conf update fails
+          fail:
+            msg: "Failed to update /etc/resolv.conf. Please check permissions or syntax."
+
+    - name: Backup and edit /etc/krb5.conf
+      block:
+        - name: Backup /etc/krb5.conf
+          copy:
+            src: /etc/krb5.conf
+            dest: /etc/krb5.conf.bak
+            backup: yes
+
+        - name: Update /etc/krb5.conf with Kerberos configuration
+          blockinfile:
+            path: /etc/krb5.conf
+            block: |
+              [libdefaults]
+                  default_realm = .ISDDC.WIKILAB.ASIA
+                  dns_lookup_realm = false
+                  dns_lookup_kdc = true
+
+      rescue:
+        - name: Fail when /etc/krb5.conf update fails
+          fail:
+            msg: "Failed to update /etc/krb5.conf. Please check permissions or syntax."
+
+    - name: Install Samba package
+      package:
+        name: samba
+        state: present
+
+    - name: Backup and edit /etc/samba/smb.conf
+      block:
+        - name: Backup /etc/samba/smb.conf
+          copy:
+            src: /etc/samba/smb.conf
+            dest: /etc/samba/smb.conf.bak
+            backup: yes
+
+        - name: Configure /etc/samba/smb.conf
+          blockinfile:
+            path: /etc/samba/smb.conf
+            block: |
+              [global]
+                 realm = ISDDC.WIKILAB.ASIA
+                 workgroup = ISDDC
+                 security = ADS
+                 server string = Solaris Samba Server
+                 kerberos method = secrets and keytab
+                 include system krb5 conf = no
+
+                # Winbind configuration:
+                 winbind separator = \
+                 winbind enum users = yes
+                 winbind enum groups = yes
+                 template homedir = /export/home/%u@%d
+                 template shell = /bin/bash
+
+                 idmap config * : backend = autorid
+                 idmap config * : range = 100000-4000000000
+                 idmap config * : rangesize = 1000000
+
+                 allow trusted domains = yes
+                 winbind refresh tickets = yes
+
+      rescue:
+        - name: Fail when /etc/samba/smb.conf update fails
+          fail:
+            msg: "Failed to update /etc/samba/smb.conf. Please check permissions or syntax."
+
+    - name: Configure SMF service properties for name-service/switch
+      block:
+        - name: Set default property
+          command: svccfg -s svc:/system/name-service/switch setprop config/default=astring:files
+
+        - name: Set password property
+          command: svccfg -s svc:/system/name-service/switch setprop config/password=astring:"files winbind [ TRYAGAIN = 3 ]"
+
+        - name: Set group property
+          command: svccfg -s svc:/system/name-service/switch setprop config/group=astring:"files winbind [TRYAGAIN=3]"
+
+        - name: Set host property
+          command: svccfg -s svc:/system/name-service/switch setprop config/host=astring:"files dns mdns winbind"
+
+        - name: Set printer property
+          command: svccfg -s svc:/system/name-service/switch setprop config/printer=astring:"user files"
+
+        - name: Refresh SMF service for name-service/switch
+          command: svcadm refresh svc:/system/name-service/switch
+
+      rescue:
+        - name: Fail when SMF configuration update fails
+          fail:
+            msg: "Failed to update SMF service configuration. Please check svccfg and svcadm commands."
+
+    - name: Enable Samba service
+      service:
+        name: samba
+        state: started
+        enabled: yes
+
+    - name: Join the server to the domain
+      command: net ads join -U mvenkata
+      register: join_output
+      failed_when: "join_output.rc != 0"
+      ignore_errors: yes
+
+    - name: Print error message if domain join fails
+      debug:
+        msg: "{{ join_output.stdout }}"
+
+    - name: Enable Winbind service
+      service:
+        name: winbind
+        state: started
+        enabled: yes
+
+    - name: Verify Samba and Winbind services are online
+      command: svcs samba winbind
+      register: svcs_output
+
+    - name: Print service status
+      debug:
+        msg: "{{ svcs_output.stdout }}"
+
+    - name: Verify winbindd can communicate and return ADS usernames and groups
+      block:
+        - name: Check winbindd ping
+          command: wbinfo -p
+          register: wbinfo_p
+          failed_when: "wbinfo_p.rc != 0"
+          ignore_errors: yes
+
+        - name: Print winbindd ping status
+          debug:
+            msg: "{{ wbinfo_p.stdout }}"
+
+        - name: List ADS usernames
+          command: wbinfo -u
+          register: wbinfo_u
+
+        - name: Print ADS usernames
+          debug:
+            msg: "{{ wbinfo_u.stdout }}"
+
+        - name: List ADS groups
+          command: wbinfo -g
+          register: wbinfo_g
+
+        - name: Print ADS groups
+          debug:
+            msg: "{{ wbinfo_g.stdout }}"
