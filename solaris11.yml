@@ -50,11 +50,27 @@
     - name: Install Samba package
       shell: pkg install samba
       register: samba_install
+      ignore_errors: yes
       
     - name: Print Samba install result
       debug:
         msg: "Output: {{ samba_install.stdout }} Error: {{ samba_install.stderr }}"
+        
+    - name: Check if installation was successful
+      debug:
+        msg: "Installation was successful."
+      when: samba_install.rc == 0
 
+    - name: Check if Samba is already installed
+      debug:
+        msg: "Samba is already installed or no updates necessary."
+      when: samba_install.rc == 4
+
+    - name: Check for other errors
+      debug:
+        msg: "Installation encountered an unexpected error."
+      when: samba_install.rc not in [0, 4]
+      
     - name: Check if installation was successful
       debug:
         msg: "Installation was successful"
