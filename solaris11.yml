@@ -48,9 +48,17 @@
             msg: "Failed to update /etc/krb5.conf. Please check permissions or syntax."
 
     - name: Install Samba package
-      package:
-        name: samba
-        state: present
+      shell: pkg install samba
+      register: samba_install
+      
+    - name: Print Samba install result
+      debug:
+        msg: "Output: {{ samba_install.stdout }} Error: {{ samba_install.stderr }}"
+
+    - name: Check if installation was successful
+      debug:
+        msg: "Installation was successful"
+      when: samba_install.rc == 0      
 
     - name: Backup and edit /etc/samba/smb.conf
       block:
