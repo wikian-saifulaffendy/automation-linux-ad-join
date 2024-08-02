@@ -57,12 +57,9 @@
         enabled: yes
 
     - name: Join the server to the domain
-      expect:
-        command: net ads join -U sainath
-        responses:
-          'Password:': "{{ domain_join_password }}"
+      shell: echo "{{ domain_join_password }}" | net ads join -U sainath
       register: join_output
-      failed_when: "join_output.rc != 0"
+   #   failed_when: "join_output.rc != 0"
       ignore_errors: yes
       
     - name: Print error message if domain join fails
