@@ -20,7 +20,12 @@
       meta: end_play
       when: already_joined
 
-    - name: Copy krb5.conf_solaris to the server if it doesn't exist
+    - name: Copy krb5.conf to the server if it doesn't exist
       copy:
         src: krb5.conf_solaris
         dest: /etc/krb5.conf
+
+    - name: Copy smb.conf to the server if it doesn't exist
+      copy:
+        src: smb.conf_solaris
+        dest: /etc/samba/smb.conf
