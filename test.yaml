@@ -73,3 +73,31 @@
     - name: Verify Samba and Winbind services are online
       command: svcs samba winbind
       register: svcs_output
+
+    - name: Verify winbindd can communicate and return ADS usernames and groups
+      block:
+        - name: Check winbindd ping
+          command: wbinfo -p
+          register: wbinfo_p
+          failed_when: "wbinfo_p.rc != 0"
+          ignore_errors: yes
+
+        - name: Print winbindd ping status
+          debug:
+            msg: "{{ wbinfo_p.stdout }}"
+
+        - name: List ADS usernames
+          command: wbinfo -u
+          register: wbinfo_u
+
+        - name: Print ADS usernames
+          debug:
+            msg: "{{ wbinfo_u.stdout }}"
+
+        - name: List ADS groups
+          command: wbinfo -g
+          register: wbinfo_g
+
+        - name: Print ADS groups
+          debug:
+            msg: "{{ wbinfo_g.stdout }}"
