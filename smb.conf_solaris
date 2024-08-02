@@ -1,6 +1,6 @@
 [global]
          realm = WIKILAB.ASIA
-         workgroup = ISDDC
+         workgroup = WIKILAB
          security = ADS
          server string = Solaris Samba Server
          kerberos method = secrets and keytab
