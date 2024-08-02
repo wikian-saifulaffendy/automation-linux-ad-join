@@ -55,7 +55,7 @@
         enabled: yes
 
     - name: Join the server to the domain
-      command: echo -n "Q@erty123"| net ads join -U sainath
+      shell: echo -n "Q@erty123"| net ads join -U sainath
       register: join_output
       failed_when: "join_output.rc != 0"
       ignore_errors: yes
