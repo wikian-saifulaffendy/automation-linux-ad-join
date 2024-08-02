@@ -47,3 +47,29 @@
 
     - name: Refresh SMF service for name-service/switch
       command: svcadm refresh svc:/system/name-service/switch
+
+    - name: Enable Samba service
+      service:
+        name: samba
+        state: started
+        enabled: yes
+
+    - name: Join the server to the domain
+      command: net ads join -U sainath
+      register: join_output
+      failed_when: "join_output.rc != 0"
+      ignore_errors: yes
+
+    - name: Print error message if domain join fails
+      debug:
+        msg: "{{ join_output.stdout }}"
+
+    - name: Enable Winbind service
+      service:
+        name: winbind
+        state: started
+        enabled: yes
+
+    - name: Verify Samba and Winbind services are online
+      command: svcs samba winbind
+      register: svcs_output
