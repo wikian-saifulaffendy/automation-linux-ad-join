@@ -105,3 +105,9 @@
         - name: Print ADS groups
           debug:
             msg: "{{ wbinfo_g.stdout }}"
+            
+    - name: Print success message if domain join is successful
+      debug:
+        msg: "Server successfully joined the domain and winbindd is functioning properly."
+      when: wbinfo_p.rc == 0 and wbinfo_u.rc == 0 and wbinfo_g.rc == 0
+        
