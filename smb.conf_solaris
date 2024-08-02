@@ -1,0 +1,29 @@
+[global]
+         realm = WIKILAB.ASIA
+         workgroup = ISDDC
+         security = ADS
+         server string = Solaris Samba Server
+         kerberos method = secrets and keytab
+         include system krb5 conf = no
+
+         # Winbind configuration:
+         winbind separator = \
+         winbind enum users = yes
+         winbind enum groups = yes
+         template homedir = /export/home/%D/%U
+         template shell = /bin/bash
+
+         idmap config * : backend = autorid
+         idmap config * : range = 100000-4000000000
+         idmap config * : rangesize = 1000000
+
+         allow trusted domains = yes
+         winbind refresh tickets = yes
+
+[WIKILAB]
+         path = /export/home/WIKILAB
+         browseable = yes
+         writable = yes
+         valid users = @"WIKILAB\Domain Users"
+         create mask = 0660
+         directory mask = 0770
