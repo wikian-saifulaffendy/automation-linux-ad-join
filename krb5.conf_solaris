@@ -1,11 +1,5 @@
 [libdefaults]
-        default_realm = WIKILAB.ASIA
+        default_realm = .WIKILAB.ASIA
         dns_lookup_realm = false
         dns_lookup_kdc = true
 
-# BEGIN ANSIBLE MANAGED BLOCK
-[libdefaults]
-    default_realm = .WIKILAB.ASIA
-    dns_lookup_realm = false
-    dns_lookup_kdc = true
-# END ANSIBLE MANAGED BLOCK
