@@ -1,16 +1,15 @@
----
 - name: Configure Samba and Winbind on Solaris
   hosts: all
   become: yes
   tasks:
     - name: Check if the server is joined to the domain
-      command: net ads testjoin
+      command: wbinfo -t
       register: domain_join_status
       ignore_errors: yes
 
     - name: Determine if the server is already joined to the domain
       set_fact:
-        already_joined: "{{ 'Join is OK' in domain_join_status.stdout }}"
+        already_joined: "{{ domain_join_status.rc == 0 }}"
 
     - name: Print message if server is already joined
       debug:
