@@ -1,6 +1,8 @@
 - name: Configure Samba and Winbind on Solaris
   hosts: all
   become: yes
+  vars:
+    domain_join_password: "Q@erty123"  
   tasks:
     - name: Check if the server is joined to the domain
       command: wbinfo -t
@@ -55,11 +57,14 @@
         enabled: yes
 
     - name: Join the server to the domain
-      shell: echo "Q@erty123"| net ads join -U sainath
+      expect:
+        command: net ads join -U sainath
+        responses:
+          'Password:': "{{ domain_join_password }}"
       register: join_output
       failed_when: "join_output.rc != 0"
       ignore_errors: yes
-
+      
     - name: Print error message if domain join fails
       debug:
         msg: "{{ join_output.stdout }}"
