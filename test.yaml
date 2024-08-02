@@ -74,6 +74,10 @@
       command: svcs samba winbind
       register: svcs_output
 
+    - name: Print service status
+      debug:
+        msg: "{{ svcs_output.stdout }}"
+        
     - name: Verify winbindd can communicate and return ADS usernames and groups
       block:
         - name: Check winbindd ping
