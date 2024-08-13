@@ -32,20 +32,8 @@
         src: smb.conf_solaris
         dest: /etc/samba/smb.conf
         
-    - name: Set default property
-      command: svccfg -s svc:/system/name-service/switch setprop config/default=astring:files
-
-    - name: Set password property
-      command: svccfg -s svc:/system/name-service/switch setprop config/password=astring:"files winbind [ TRYAGAIN = 3 ]"
-
-    - name: Set group property
-      command: svccfg -s svc:/system/name-service/switch setprop config/group=astring:"files winbind [TRYAGAIN=3]"
-
-    - name: Set host property
-      command: svccfg -s svc:/system/name-service/switch setprop config/host=astring:"files dns mdns winbind"
-
-    - name: Set printer property
-      command: svccfg -s svc:/system/name-service/switch setprop config/printer=astring:"user files"
+    - name: Set default property, password property, group property, host property, host property
+      command: sh 
 
     - name: Refresh SMF service for name-service/switch
       command: svcadm refresh svc:/system/name-service/switch
