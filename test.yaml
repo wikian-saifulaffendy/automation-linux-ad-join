@@ -31,9 +31,15 @@
       copy:
         src: smb.conf_solaris
         dest: /etc/samba/smb.conf
+
+    - name: Copy default property, password property, group property, host property, host property
+      copy:
+        src: setprop.sh
+        dest: /tmp/
+        mode: '0755'
         
     - name: Set default property, password property, group property, host property, host property
-      command: sh 
+      command: sh /tmp/setprop.sh
 
     - name: Refresh SMF service for name-service/switch
       command: svcadm refresh svc:/system/name-service/switch
