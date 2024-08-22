@@ -103,7 +103,7 @@
             msg: "{{ wbinfo_g.stdout }}"
         - name: Create the home directory if it doesn't exist
           file:
-            path: /export/home/ISDDC
+            path: /export/home/WIKILAB
             state: directory
             owner: root
             group: "WIKILABwdomain users"
