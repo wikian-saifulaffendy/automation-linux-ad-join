@@ -101,7 +101,13 @@
         - name: Print ADS groups
           debug:
             msg: "{{ wbinfo_g.stdout }}"
-            
+        - name: Create the home directory if it doesn't exist
+          file:
+            path: /export/home/ISDDC
+            state: directory
+            owner: root
+            group: "WIKILABwdomain users"
+            mode: '0775'            
     - name: Print success message if domain join is successful
       debug:
         msg: "Server successfully joined the domain and winbindd is functioning properly."
