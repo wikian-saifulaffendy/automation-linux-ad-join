@@ -73,6 +73,14 @@
     - name: Print service status
       debug:
         msg: "{{ svcs_output.stdout }}"
+    
+    - name: Restart Samba and Winbind services
+      service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - samba
+        - winbind
         
     - name: Verify winbindd can communicate and return ADS usernames and groups
       block:
