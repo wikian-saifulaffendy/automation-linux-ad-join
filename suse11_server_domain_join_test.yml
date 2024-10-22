@@ -1,0 +1,234 @@
+---
+- name: Detect and Execute SUSE 11 OS-specific tasks
+  hosts: "{{ host_list }}"
+  gather_facts: yes
+  vars:
+    domain_name: wikilab.asia
+    username: "tdsaiful"
+    password: "{{ pass }}"
+
+  tasks:
+  
+    - name: Check if running on SUSE 11
+      fail:
+        msg: "This playbook only runs on SUSE 11 servers."
+      when: ansible_distribution_major_version | int != 11
+      tags: always
+
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_dsistribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+        
+    # Prechecks to Join Domain       
+    - name: Check ID for AD user
+      shell: "getent passwd {{ username }}"
+      register: check_user
+      changed_when: false
+      ignore_errors: true
+
+    - name: Print failure message if AD user check failed
+      debug:
+        msg: "Check failed: AD user {{ username }} does not exist on {{ ansible_facts['fqdn'] }}"
+      when: check_user.rc != 0
+      
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: false
+      ignore_errors: true
+    
+    - name: Print failure message if LDAP port check failed
+      debug:
+        msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
+      when: check_ldap.rc != 0 
+      
+    - name: Print success message if SUSE server joined domain
+      debug:
+        msg: "SUSE server joined domain"
+      when: check_user.rc == 0 and check_ldap.rc == 0
+
+    - name: Print failure message if SUSE server Not joined domain
+      debug:
+        msg: "{{ ansible_facts['fqdn'] }} server needs to join domain"
+      when: check_user.rc != 0 or check_ldap.rc != 0
+
+    - name: Exit the playbook if SUSE server joined domain
+      fail:
+        msg: "This Server Already Joined Domain."
+      when: check_user.rc == 0 and check_ldap.rc == 0
+      tags: always
+
+    - name: Modify ldap Configuration
+      copy:
+        src: /files/suse11_ldap.conf
+        dest: /etc/openldap/ldap.conf
+        mode: "0644"
+
+    - name: Modify Samba Configuration
+      copy:
+        src: /files/suse11_smb.conf
+        dest: /etc/samba/smb.conf
+        mode: "0644"
+        
+    - name: Create the home directory if it doesn't exist
+      file:
+        path: /etc/openldap/certs
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+          
+    - name: Copy LDAP CERT
+      copy:
+        src: /files/WIKILAB.ASIA-ROOT-CA.cer
+        dest: /etc/openldap/certs/
+        mode: '0644'
+
+    - name: Ensure temporary directory exists
+      file:
+        path: /tmp/suse11_adpackages
+        state: directory
+        mode: '0755'
+
+    # Install packages on SLES 11
+    - name: Transfer suse11_adpackages.tar.gz from local /files directory
+      copy:
+        src: /files/suse11_adpackages.tar.gz
+        dest: /tmp/suse11_adpackages/suse11_adpackages.tar.gz
+        mode: '0644'
+
+    - name: Extract suse11_adpackages.tar.gz
+      unarchive:
+        src: /tmp/suse11_adpackages/suse11_adpackages.tar.gz
+        dest: /tmp/suse11_adpackages
+        remote_src: yes
+
+    - name: Install all RPMs in /tmp/suse11_adpackages using zypper
+      zypper:
+        name: "{{ item }}"
+        state: present
+      with_fileglob:
+        - /tmp/suse11_adpackages/*.rpm
+      loop_control:
+        label: "Installing {{ item }}"
+
+    - name: Clean up temporary files
+      file:
+        path: "/tmp/suse11_adpackages.tar.gz"
+        state: absent
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/suse11_adpackages
+        state: absent
+
+    - name: Join domain using net ads
+      command: "net ads join -U {{ username }}@{{ domain_name }}%{{ password }} --verbose"
+      ignore_errors: yes
+  
+    - name: Modify SSSD Configuration
+      copy:
+        src: /files/suse11_sssd.conf
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+
+    - name: Update nsswitch.conf configuration file
+      replace:
+        path: /etc/nsswitch.conf
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+        backup: true
+      with_items:
+        - { regexp: '^passwd:.*', replace: 'passwd: compat sss' }
+        - { regexp: '^group:.*', replace: 'group: compat sss' }
+
+    - name: Enable SSSD Authentication in PAM
+      command: pam-config -a --sss
+      ignore_errors: yes
+
+    - name: Enable SSSD Home Directory Management in PAM
+      command: pam-config -a --mkhomedir
+      ignore_errors: yes
+
+    - name: Restart Samba, Winbind, and SSSD services
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - smb
+        - winbind
+        - sssd
+
+    - name: Stop nscd service
+      service:
+        name: nscd
+        state: stopped
+        enabled: false
+
+    # Post validation of Join Domain
+    - name: Check ID for AD user
+      shell: "getent passwd {{ username }}"
+      register: check_user
+      changed_when: false
+      ignore_errors: true
+
+    - name: Print result ID for AD user
+      debug:
+        msg: >-
+          {% if check_user.rc != 0 %}
+          Check failed: AD user "{{ username }}" does not exist on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: AD user "{{ username }}" exists on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+
+    - name: Wait for 5 seconds
+      pause:
+        seconds: 8
+        
+    - name: Check if LDAP port is in use
+      shell: /usr/bin/lsof -i:636
+      register: check_ldap
+      changed_when: false
+      ignore_errors: true           
+
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if check_ldap.rc != 0 %}
+          Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: LDAP port 636 is listening on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+
+    - name: Login AD user Account 
+      shell: sshpass -p "{{ password }}" ssh {{ username }}@localhost pwd
+      register: ssh
+
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if ssh.rc != 0 %}
+          Check failed: Unable to login as AD user "{{ username }}" on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: Login as AD user "{{ username }}" on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+     
+    - name: Print result of all checks
+      debug:
+        msg: >-
+          {% if check_user.rc == 0 and check_ldap.rc == 0 and ssh.rc == 0 %}
+          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
+          {% else %}
+          Failed to join server {{ ansible_facts['fqdn'] }} to the domain, check manually or rerun playbook.
+          {% endif %}
+...
