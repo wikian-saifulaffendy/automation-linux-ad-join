@@ -76,7 +76,7 @@
 
     - name: Modify Samba Configuration
       copy:
-        src: /files/suse11_smb.conf
+        src: suse11_smb.conf
         dest: /etc/samba/smb.conf
         mode: "0644"
         
@@ -90,7 +90,7 @@
           
     - name: Copy LDAP CERT
       copy:
-        src: /files/WIKILAB.ASIA-ROOT-CA.cer
+        src: WIKILAB.ASIA-ROOT-CA.cer
         dest: /etc/openldap/certs/
         mode: '0644'
 
@@ -103,7 +103,7 @@
     # Install packages on SLES 11
     - name: Transfer suse11_adpackages.tar.gz from local /files directory
       copy:
-        src: /files/suse11_adpackages.tar.gz
+        src: suse11_adpackages.tar.gz
         dest: /tmp/suse11_adpackages/suse11_adpackages.tar.gz
         mode: '0644'
 
@@ -138,7 +138,7 @@
   
     - name: Modify SSSD Configuration
       copy:
-        src: /files/suse11_sssd.conf
+        src: suse11_sssd.conf
         dest: /etc/sssd/sssd.conf
         mode: "0600"
 
