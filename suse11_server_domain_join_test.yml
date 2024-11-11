@@ -1,15 +1,14 @@
 ---
 - name: Detect and Execute SUSE 11 OS-specific tasks
-  #hosts: "{{ host_list }}"
-  hosts: all
-  gather_facts: yes
+  hosts: sles11_servers
+  gather_facts: true
   vars:
     domain_name: wikilab.asia
-    username: "tdsaiful"
+    username: "{{ user }}"
     password: "{{ pass }}"
 
   tasks:
-  
+
     - name: Check if running on SUSE 11
       fail:
         msg: "This playbook only runs on SUSE 11 servers."
@@ -28,8 +27,8 @@
     - name: Print the OS major version
       debug:
         var: ansible_distribution_major_version
-        
-    # Prechecks to Join Domain       
+
+    # Prechecks to Join Domain
     - name: Check ID for AD user
       shell: "getent passwd {{ username }}"
       register: check_user
@@ -40,18 +39,18 @@
       debug:
         msg: "Check failed: AD user {{ username }} does not exist on {{ ansible_facts['fqdn'] }}"
       when: check_user.rc != 0
-      
+
     - name: Check if LDAP port is in use
       shell: lsof -i:636
       register: check_ldap
       changed_when: false
       ignore_errors: true
-    
+
     - name: Print failure message if LDAP port check failed
       debug:
         msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
       when: check_ldap.rc != 0 
-      
+
     - name: Print success message if SUSE server joined domain
       debug:
         msg: "SUSE server joined domain"
@@ -79,19 +78,19 @@
         src: suse11_smb.conf
         dest: /etc/samba/smb.conf
         mode: "0644"
-        
-    - name: Create the home directory if it doesn't exist
+
+    - name: Create the openldap certs directory if it doesn't exist
       file:
         path: /etc/openldap/certs
         state: directory
         owner: root
         group: root
         mode: '0755'
-          
+
     - name: Copy LDAP CERT
       copy:
         src: WIKILAB.ASIA-ROOT-CA.cer
-        dest: /etc/openldap/certs/
+        dest: /etc/openldap/certs/WIKILAB.ASIA-ROOT-CA.cer
         mode: '0644'
 
     - name: Ensure temporary directory exists
@@ -104,23 +103,30 @@
     - name: Transfer suse11_adpackages.tar.gz from local /files directory
       copy:
         src: suse11_adpackages.tar.gz
-        dest: /tmp/suse11_adpackages/suse11_adpackages.tar.gz
+        dest: /tmp/suse11_adpackages.tar.gz
         mode: '0644'
 
     - name: Extract suse11_adpackages.tar.gz
       unarchive:
-        src: /tmp/suse11_adpackages/suse11_adpackages.tar.gz
+        src: /tmp/suse11_adpackages.tar.gz
         dest: /tmp/suse11_adpackages
-        remote_src: yes
+        remote_src: true
 
-    - name: Install all RPMs in /tmp/suse11_adpackages using zypper
-      zypper:
-        name: "{{ item }}"
-        state: present
-      with_fileglob:
-        - /tmp/suse11_adpackages/*.rpm
-      loop_control:
-        label: "Installing {{ item }}"
+    - name: Install RPM packages using rpm -Uvh --nosignature
+      command: rpm -Uvh --nosignature {{ item }}
+      with_items:
+        - /tmp/suse11_adpackages/sshpass-1.06-11.1.x86_64.rpm
+        - /tmp/suse11_adpackages/sssd-tools-1.9.4-0.16.1.x86_64.rpm
+        - /tmp/suse11_adpackages/sssd-32bit-1.9.4-0.16.1.x86_64.rpm
+        - /tmp/suse11_adpackages/sssd-1.9.4-0.16.1.x86_64.rpm
+        - /tmp/suse11_adpackages/samba-winbind-32bit-3.6.3-0.58.1.x86_64.rpm
+        - /tmp/suse11_adpackages/samba-winbind-3.6.3-0.58.1.x86_64.rpm
+        - /tmp/suse11_adpackages/pam-modules-11-1.25.26.x86_64.rpm
+        - /tmp/suse11_adpackages/openldap2-client-2.4.26-0.30.1.x86_64.rpm
+        - /tmp/suse11_adpackages/libiniparser0-32bit-2.17-87.17.x86_64.rpm
+        - /tmp/suse11_adpackages/libiniparser0-2.17-87.17.x86_64.rpm
+        - /tmp/suse11_adpackages/krb5-client-1.6.3-133.49.66.1.x86_64.rpm
+      ignore_errors: true
 
     - name: Clean up temporary files
       file:
@@ -134,8 +140,8 @@
 
     - name: Join domain using net ads
       command: "net ads join -U {{ username }}@{{ domain_name }}%{{ password }} --verbose"
-      ignore_errors: yes
-  
+      ignore_errors: true
+
     - name: Modify SSSD Configuration
       copy:
         src: suse11_sssd.conf
@@ -154,11 +160,11 @@
 
     - name: Enable SSSD Authentication in PAM
       command: pam-config -a --sss
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Enable SSSD Home Directory Management in PAM
       command: pam-config -a --mkhomedir
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Restart Samba, Winbind, and SSSD services
       service:
@@ -192,15 +198,15 @@
           Check Pass: AD user "{{ username }}" exists on {{ ansible_facts['fqdn'] }}
           {% endif %}
 
-    - name: Wait for 5 seconds
-      pause:
-        seconds: 8
-        
+    - name: Login AD user Account 
+      shell: sshpass -p "{{ password }}" ssh {{ username }}@localhost pwd
+      register: ssh
+
     - name: Check if LDAP port is in use
-      shell: /usr/bin/lsof -i:636
+      command: lsof -i:636
       register: check_ldap
       changed_when: false
-      ignore_errors: true           
+      ignore_errors: true
 
     - name: Print result LDAP port is in use
       debug:
@@ -211,10 +217,6 @@
           Check Pass: LDAP port 636 is listening on {{ ansible_facts['fqdn'] }}
           {% endif %}
 
-    - name: Login AD user Account 
-      shell: sshpass -p "{{ password }}" ssh {{ username }}@localhost pwd
-      register: ssh
-
     - name: Print result LDAP port is in use
       debug:
         msg: >-
@@ -223,7 +225,7 @@
           {% else %}
           Check Pass: Login as AD user "{{ username }}" on {{ ansible_facts['fqdn'] }}
           {% endif %}
-     
+
     - name: Print result of all checks
       debug:
         msg: >-
