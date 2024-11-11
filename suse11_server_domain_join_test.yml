@@ -1,6 +1,6 @@
 ---
 - name: Detect and Execute SUSE 11 OS-specific tasks
-  hosts: sles11_servers
+  hosts: all
   gather_facts: true
   vars:
     domain_name: wikilab.asia
