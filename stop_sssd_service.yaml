@@ -1,6 +1,6 @@
 ---
 - name: Stop SSSD service to test AD integration playbook
-  hosts: "{{ host_list }}"
+  hosts: all
   become: true
 
   tasks:
