@@ -100,11 +100,11 @@
     - name: Copy LDAP CERT
       copy:
         src: testfolder/LDAPS_CERT8.cer
-        dest: /etc/openldap/cacerts
+        dest: /etc/openldap/certs
         mode: "0655"
 
     - name: CERT Rehash in RHLE 6
-      shell: cacertdir_rehash /etc/openldap/cacerts
+      shell: cacertdir_rehash /etc/openldap/certs
       when: ansible_distribution_major_version|int == 6
 
     - name: Restart sssd
