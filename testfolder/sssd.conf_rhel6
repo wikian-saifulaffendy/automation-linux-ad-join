@@ -1,7 +1,16 @@
 [sssd]
-domains = wikilab.asia
 config_file_version = 2
-services = nss, pam
+services = nss,pam
+domains = wikilab.asia
+debug_level = 9
+
+[nss]
+fallback_homedir = /home/%u
+default_shell = /bin/bash
+debug_level = 9
+
+[pam]
+debug_level = 9
 
 [domain/wikilab.asia]
 id_provider = ldap
@@ -19,7 +28,10 @@ ldap_id_mapping = True
 dns_discovery_domain = wikilab.asia
 dns_resolver_timeout = 26
 enumerate = false
-fallback_homedir = /home/%u@%d
 cache_credentials = true
-ldap_id_use_start_tls = true
-ldap_service_port = 636
+ldap_id_use_start_tls = False
+#ldap_tls_reqcert specifies if the client requests a server certificate and what checks are performed on the certificate
+#ldap_tls_reqcert = demand
+#ldap_tls_cacert = /etc/openldap/LDAPS_CERT8.cer  #ldap_tls_cacert specifies the file containing the certificate
+debug_level = 9
+timeout = 120
