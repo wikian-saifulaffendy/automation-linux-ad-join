@@ -112,8 +112,8 @@
         dest: /tmp/suse11_adpackages
         remote_src: true
 
-    - name: Install RPM packages using rpm -Uvh --nosignature
-      command: rpm -Uvh --nosignature {{ item }}
+    - name: Install RPM packages using zypper 
+      command: zypper --non-interactive install {{ item }}
       with_items:
         - /tmp/suse11_adpackages/sshpass-1.06-11.1.x86_64.rpm
         - /tmp/suse11_adpackages/sssd-tools-1.9.4-0.16.1.x86_64.rpm
