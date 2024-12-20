@@ -1,0 +1,72 @@
+---
+- name: Whitelisting of simple_allow_users and simple_allow_groups in sssd.conf
+  hosts: all
+  become: true
+
+  vars:
+    add_users: ["newuser1", "newuser2"]    # Users to be added
+    remove_users: ["tdsaiful"]             # Users to be removed
+    add_groups: ["newgroup1"]              # Groups to be added
+    remove_groups: ["oldgroup"]            # Groups to be removed
+
+  tasks:
+    - name: Ensure access_provider is set to simple in sssd.conf
+      lineinfile:
+        path: /etc/sssd/sssd.conf
+        regexp: '^access_provider ='
+        line: 'access_provider = simple'
+        create: true
+        backup: true
+
+    - name: Update simple_allow_users in sssd.conf
+      block:
+        - name: Get the existing simple_allow_users list
+          shell: "awk -F '=' '/^simple_allow_users/ {print $2}' /etc/sssd/sssd.conf"
+          register: current_users_raw
+          changed_when: false
+
+        - name: Set current simple_allow_users list
+          set_fact:
+            current_users: "{{ current_users_raw.stdout.split(',') | map('trim') | select('match', '.+') | list }}"
+          when: current_users_raw.stdout != ""
+
+        - name: Update simple_allow_users list
+          set_fact:
+            updated_simple_allow_users: "{{ (current_users + add_users) | difference(remove_users) | unique | list }}"
+
+        - name: Write simple_allow_users to sssd.conf
+          lineinfile:
+            path: /etc/sssd/sssd.conf
+            regexp: '^simple_allow_users'
+            line: "simple_allow_users = {{ updated_simple_allow_users | join(', ') }}"
+            create: true
+            backup: true
+
+    - name: Update simple_allow_groups in sssd.conf
+      block:
+        - name: Get the existing simple_allow_groups list
+          shell: "awk -F '=' '/^simple_allow_groups/ {print $2}' /etc/sssd/sssd.conf"
+          register: current_groups_raw
+          changed_when: false
+
+        - name: Set current simple_allow_groups list
+          set_fact:
+            current_groups: "{{ current_groups_raw.stdout.split(',') | map('trim') | select('match', '.+') | list }}"
+          when: current_groups_raw.stdout != ""
+
+        - name: Update simple_allow_groups list
+          set_fact:
+            updated_simple_allow_groups: "{{ (current_groups + add_groups) | difference(remove_groups) | unique | list }}"
+
+        - name: Write simple_allow_groups to sssd.conf
+          lineinfile:
+            path: /etc/sssd/sssd.conf
+            regexp: '^simple_allow_groups'
+            line: "simple_allow_groups = {{ updated_simple_allow_groups | join(', ') }}"
+            create: true
+            backup: true
+
+    - name: Restart sssd service to apply changes
+      service:
+        name: sssd
+        state: restarted
