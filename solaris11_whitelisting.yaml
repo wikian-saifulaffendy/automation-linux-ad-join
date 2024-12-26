@@ -1,0 +1,46 @@
+---
+- name: Manage require_membership_of in pam_winbind.conf
+  hosts: all
+  become: true
+
+  vars:
+    add_members: ["newuser1", "newuser2"]    # Members to be added
+    remove_members: ["tdsaiful"]             # Members to be removed
+
+  tasks:
+    - name: Ensure require_membership_of is set in pam_winbind.conf
+      lineinfile:
+        path: /etc/security/pam_winbind.conf
+        regexp: '^require_membership_of ='
+        line: 'require_membership_of ='
+        create: true
+        backup: true
+
+    - name: Update require_membership_of in pam_winbind.conf
+      block:
+        - name: Get the existing require_membership_of list
+          shell: "awk -F '=' '/^require_membership_of/ {print $2}' /etc/security/pam_winbind.conf"
+          register: current_members_raw
+          changed_when: false
+
+        - name: Set current require_membership_of list
+          set_fact:
+            current_members: "{{ current_members_raw.stdout.split(',') | map('trim') | select('match', '.+') | list }}"
+          when: current_members_raw.stdout != ""
+
+        - name: Update require_membership_of list
+          set_fact:
+            updated_require_membership_of: "{{ (current_members + add_members) | difference(remove_members) | unique | list }}"
+
+        - name: Write require_membership_of to pam_winbind.conf
+          lineinfile:
+            path: /etc/security/pam_winbind.conf
+            regexp: '^require_membership_of'
+            line: "require_membership_of = {{ updated_require_membership_of | join(',') }}"
+            create: true
+            backup: true
+
+    - name: Restart winbind service to apply changes
+      service:
+        name: winbind
+        state: restarted
