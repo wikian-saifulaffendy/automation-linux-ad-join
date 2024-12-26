@@ -36,7 +36,7 @@
           lineinfile:
             path: /etc/security/pam_winbind.conf
             regexp: '^require_membership_of'
-            line: "require_membership_of={{ updated_require_membership_of | join(',') }}"
+            line: "require_membership_of = {{ updated_require_membership_of | join(',') }}"
             create: true
             backup: true
 
