@@ -8,13 +8,16 @@
     remove_members: ["tdsaiful"]             # Members to be removed
 
   tasks:
-#    - name: Ensure require_membership_of is set in pam_winbind.conf
-#      lineinfile:
-#        path: /etc/security/pam_winbind.conf
-#        regexp: '^require_membership_of ='
-#        line: 'require_membership_of ='
-#        create: true
-#        backup: true
+    - name: Check if require_membership_of is enabled
+      shell: "grep -E '^require_membership_of =' /etc/security/pam_winbind.conf"
+      register: require_membership_of_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Fail if require_membership_of is not enabled
+      fail:
+        msg: "The 'require_membership_of' parameter is not enabled in /etc/security/pam_winbind.conf."
+      when: require_membership_of_check.rc != 0
 
     - name: Update require_membership_of in pam_winbind.conf
       block:
