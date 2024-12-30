@@ -17,7 +17,7 @@
       fail:
         msg: "This playbook can only be run on Solaris 11. You are running {{ ansible_distribution }} version {{ ansible_distribution_version }}."
       when: 
-        - ansible_distribution != "Solaris" or ansible_distribution_major_version not in ["10"]
+        - ansible_distribution != "Solaris" or ansible_distribution_major_version not in ["11"]
   
     - name: Check if require_membership_of is enabled
       shell: "egrep '^require_membership_of =' /etc/security/pam_winbind.conf"
