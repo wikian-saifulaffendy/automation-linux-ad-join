@@ -9,7 +9,7 @@
 
   tasks:
     - name: Check if require_membership_of is enabled
-      shell: "grep -E '^require_membership_of =' /etc/security/pam_winbind.conf"
+      shell: "egrep '^require_membership_of =' /etc/security/pam_winbind.conf"
       register: require_membership_of_check
       ignore_errors: yes
       changed_when: false
