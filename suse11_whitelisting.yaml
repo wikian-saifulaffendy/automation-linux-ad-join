@@ -1,5 +1,5 @@
 ---
-- name: Whitelisting Users with simple_allow_users and simple_allow_groups in sssd.conf (SLES 11 SP4)
+- name: Whitelisting Users with simple_allow_users and simple_allow_groups in sssd.conf (SLES 11 SP4 & RHEL 6)
   hosts: all
   become: true
 
@@ -17,9 +17,12 @@
 
     - name: Check the OS distribution supported for this play
       fail:
-        msg: "This playbook can only be run on SUSE 11 SP4. You are running {{ ansible_distribution }} version {{ ansible_distribution_version }}."
-      when: 
-        - ansible_distribution != "SLES" or ansible_distribution_major_version not in ["11"]
+        msg: >
+          This playbook can only be run on RHEL 6 or SUSE 11 SP4.
+          You are running {{ ansible_distribution }} version {{ ansible_distribution_version }}.
+      when: >
+        (ansible_distribution != "RedHat" or ansible_distribution_major_version != "6") and
+        (ansible_distribution != "SLES" or ansible_distribution_major_version != "11")
 
     - name: Check if /etc/sssd/sssd.conf exists
       stat:
