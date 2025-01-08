@@ -34,13 +34,13 @@
         msg: "The file /etc/sssd/sssd.conf does not exist. Cannot proceed."
       when: not sssd_conf.stat.exists
 
-        - name: Ensure access_provider is set to simple in sssd.conf
-          lineinfile:
-            path: /etc/sssd/sssd.conf
-            regexp: '^access_provider ='
-            line: 'access_provider = simple'
-            create: true
-            backup: true
+    - name: Ensure access_provider is set to simple in sssd.conf
+      lineinfile:
+        path: /etc/sssd/sssd.conf
+        regexp: '^access_provider ='
+        line: 'access_provider = simple'
+        create: true
+        backup: true
 
     - name: Update simple_allow_users in sssd.conf
       block:
