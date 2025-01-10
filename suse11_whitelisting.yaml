@@ -18,10 +18,9 @@
     - name: Check the OS distribution supported for this play
       fail:
         msg: >
-          This playbook can only be run on RHEL 6 or SUSE 11 SP4.
+          This playbook can only be run on SUSE 15 and SUSE 11 SP4.
           You are running {{ ansible_distribution }} version {{ ansible_distribution_version }}.
       when: >
-        (ansible_distribution != "RedHat" or ansible_distribution_major_version != "6") and
         (ansible_distribution != "SLES" or (ansible_distribution_major_version != "11" and ansible_distribution_major_version != "15"))
 
     - name: Check if /etc/sssd/sssd.conf exists
