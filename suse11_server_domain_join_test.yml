@@ -141,6 +141,7 @@
     - name: Join domain using net ads
       command: "net ads join -U {{ username }}@{{ domain_name }}%{{ password }} --verbose"
       ignore_errors: true
+      no_log: true
 
     - name: Modify SSSD Configuration
       copy:
@@ -201,6 +202,7 @@
     - name: Login AD user Account 
       shell: sshpass -p "{{ password }}" ssh {{ username }}@localhost pwd
       register: ssh
+      no_log: true
 
     - name: Check if LDAP port is in use
       command: lsof -i:636
