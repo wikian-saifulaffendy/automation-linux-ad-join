@@ -1,1 +1,211 @@
-# rhel789_server_domain_join_test.yml
+---
+- name: Detect and Execute RHEL 789 OS-specific tasks
+  #hosts: "{{ host_list }}"
+  hosts: all
+  gather_facts: yes
+  vars:
+    domain_name: wikilab.asia
+    username: "{{ username }}"
+    password: "{{ pass }}"
+
+  tasks:
+
+    - name: Check if running on RHEL 789
+      fail:
+        msg: "This playbook only runs on RHEL 789 servers."
+      when: ansible_distribution_major_version | int == 6
+      tags: always
+
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+
+    - name: Check if user {{ username }} exists
+      shell: getent passwd {{ username }}
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+
+    - name: Print failure message if AD user check failed
+      debug:
+        msg: "Check failed: AD user '{{ username }}' does not exist on {{ ansible_facts['fqdn'] }}"
+      when: check_user.rc != 0
+
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True
+
+    - name: Print failure message if LDAP port check failed
+      debug:
+        msg: "Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}"
+      when: check_ldap.rc != 0
+
+    - name: Install realm package
+      shell: |
+            if ! rpm -q realmd; then
+            yum install -y realmd || echo "Error: No package realmd available"
+            fi
+      register: check_realmpkg
+      failed_when: "'Error: No package realmd available' in check_realmpkg.stdout"
+
+    - name: Check realm list
+      shell: realm list | egrep "realm-name|domain-name"
+      register: check_realm
+      changed_when: False
+      ignore_errors: True
+      when: check_realmpkg.stderr == ""
+
+    - name: Print success message if RHEL 789 server joined domain
+      debug:
+        msg: "RHEL 789 server joined domain"
+      when: check_realm.rc == 0
+
+    - name: Print failure message if RHEL 789 server Not joined domain
+      debug:
+        msg: "{{ ansible_facts['fqdn'] }} server need to joined domain"
+      when: check_realm.rc != 0 or check_ldap.rc != 0
+
+    - name: Exit the playbook if RHEL 789 server joined domain
+      fail:
+        msg: "This Server Already Joined Domain."
+      when: check_realm.rc == 0 and check_ldap.rc == 0
+      tags: always
+
+#    - name: Exit the playbook if RHEL 789 server joined domain
+#      meta: end_play
+#      when: check_user.rc == 0 and check_ldap.rc == 0 and check_realm.rc == 0
+
+    - name: Install realm package along with sssd
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - realmd
+        - adcli
+        - sssd
+        - krb5-workstation
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - lsof
+        - sshpass
+
+    - name: Join domain (RHEL 7, 8, 9)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+
+    - name: Print server join domain error message if any
+      debug:
+        var: join_domain.stderr_lines
+      when: join_domain.rc != 0
+
+    - name: Modify SSSD Configuration in RHEL7, 8 and 9
+      copy:
+        src: sssd_localwiki.conf
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+
+    - name: Add cert path to the ldap.conf in RHEL7, 8 and 9
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/wikilab-ca.cer'
+        state: present
+
+    - name: start and enable oddjobd.service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+    - name: Copy LDAP CERT
+      copy:
+        src: wikilab-ca.cer
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+
+    - name: login and print the working directory via ssh
+      shell: getent passwd {{username}}
+      register: check_user
+      changed_when: False
+      ignore_errors: True
+
+    - name: Print result ID for AD user
+      debug:
+        msg: >-
+          {% if check_user.rc != 0 %}
+          Check failed: AD user '{{ username }}' does not exist on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: AD user '{{ username }}' exist on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+
+    - name: Check if LDAP port is in use
+      shell: lsof -i:636
+      register: check_ldap
+      changed_when: False
+      ignore_errors: True
+
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if check_ldap.rc != 0 %}
+          Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: LDAP port 636 is listening on {{ ansible_facts['fqdn'] }}
+          {% endif %}
+
+    - name: login Before Blacklisting. (If SSH fails need to validate)
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+      ignore_errors: yes
+
+    - name: Print result LDAP port is in use
+      debug:
+        msg: >-
+          {% if ssh.rc != 0 %}
+          Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: Login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}"
+          {% endif %}
+
+    - name: Blacklisting all Users
+      shell: realm permit -x {{username}}
+
+    - name: Blacklisting all Groups
+      shell: realm permit -xg {{username}}
+
+    - name: login via ssh to user After Blacklisting
+      shell: sshpass -p "{{password}}" ssh {{username}}@localhost pwd
+      register: ssh
+      ignore_errors: yes
+
+    - name: Print message based on SSH exit code (improved)
+      debug:
+        msg: "{{ 'All Users are blacklisted' if ssh.rc == 255 else 'Permission Denied' }}"  # Conditional message
+      when: ssh.rc in (255, 5) and not check_realm.rc == 0 or check_realm.stdout.strip() == ""
+
+    - name: Print result of all checks
+      debug:
+        msg: >-
+          {% if check_user.rc == 0 and check_ldap.rc == 0 %}
+          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
+          {% else %}
+          Failed joined server {{ ansible_facts['fqdn'] }} to the domain, Check manually or rerun playbook.
+          {% endif %}
