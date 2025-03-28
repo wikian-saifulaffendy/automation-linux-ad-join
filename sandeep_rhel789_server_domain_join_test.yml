@@ -1,0 +1,299 @@
+---
+- name: Detect and Execute RHEL 789 OS-specific tasks
+  hosts: all
+			
+  gather_facts: yes
+  vars:
+    domain_name: wikilab.asia
+    username: "{{ username }}"
+    password: "{{ pass }}"
+    domain_check_results: []
+    
+  pre_tasks:
+    - name: Ensure sshpass is installed on control node
+      delegate_to: localhost
+      become: no
+      package:
+        name: sshpass
+        state: present
+      run_once: true
+      ignore_errors: yes
+
+  tasks:
+
+    - name: Check if running on RHEL 789
+      fail:
+        msg: "This playbook only runs on RHEL 789 servers."
+      when: ansible_distribution_major_version | int == 6
+      tags: always
+      
+    - name: Gather OS version and distribution facts
+      debug:
+        var: ansible_distribution_version
+      register: os_version
+
+    - name: Extract OS major version from facts
+      set_fact:
+        ansible_distribution_major_version: "{{ ansible_distribution_version.split('.')[0] }}"
+
+    - name: Print the OS major version
+      debug:
+        var: ansible_distribution_major_version
+    
+    # Comprehensive domain join check block
+    - name: Check domain join status
+      block:
+        - name: Check if user {{ username }} exists
+          shell: getent passwd "{{ username }}"
+          register: check_user
+          changed_when: False
+          ignore_errors: True
+          
+        - name: Check if LDAP port is in use
+          shell: lsof -i:636
+          register: check_ldap
+          changed_when: False
+          ignore_errors: True
+          
+        - name: Check realm package installation
+          shell: rpm -q realmd
+          register: realmd_installed
+          changed_when: False
+          ignore_errors: True
+          
+        - name: Check realm list if realm is installed
+          shell: realm list | grep -E "realm-name|domain-name"
+          register: check_realm
+          changed_when: False
+          ignore_errors: True
+          when: realmd_installed.rc == 0
+          
+        - name: Set fact with domain check results
+          set_fact:
+            domain_check_results:
+              - check: "AD user existence"
+                status: "{{ check_user.rc == 0 }}"
+                message: "{{ 'AD user exists' if check_user.rc == 0 else 'AD user does not exist' }}"
+              - check: "LDAP port"
+                status: "{{ check_ldap.rc == 0 }}"
+                message: "{{ 'LDAP port 636 is listening' if check_ldap.rc == 0 else 'LDAP port 636 is not listening' }}"
+              - check: "Realm check"
+                status: "{{ check_realm.rc == 0 if realmd_installed.rc == 0 else false }}"
+                message: "{{ 'Domain is configured in realm' if (check_realm.rc == 0 and realmd_installed.rc == 0) else 'Domain not configured in realm' }}"
+          
+        - name: Determine if server is already properly joined to domain
+          set_fact:
+            already_joined: "{{ check_user.rc == 0 and check_ldap.rc == 0 and (check_realm.rc == 0 if realmd_installed.rc == 0 else false) }}"
+            
+        - name: Display comprehensive domain join check results
+          debug:
+            msg: "Domain join status checks on {{ ansible_facts['fqdn'] }}:\n{{ domain_check_results | to_nice_yaml }}"
+            
+        - name: Display overall domain join status
+          debug:
+            msg: "{{ 'Server is already properly joined to the domain.' if already_joined else 'Server needs to be joined to the domain.' }}"
+          
+        - name: Exit the playbook if RHEL server is already joined to domain
+          meta: end_play
+          when: already_joined
+
+    # Join domain section - only runs if server is not already joined
+    - name: Install realm package
+      shell: |
+            if ! rpm -q realmd; then
+            yum install -y realmd || echo "Error: No package realmd available"
+            fi
+      register: check_realmpkg
+      failed_when: "'Error: No package realmd available' in check_realmpkg.stdout"
+
+							
+																					
+						   
+						 
+						 
+									   
+
+																  
+			
+											
+							   
+
+																	  
+			
+																	   
+																			   
+
+															  
+		   
+												 
+																				 
+				  
+
+															   
+					 
+																			  
+
+    - name: Install realm package along with sssd
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - realmd
+        - adcli
+        - sssd
+        - krb5-workstation
+        - authconfig
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - lsof
+				 
+
+    - name: Join domain (RHEL 7, 8, 9)
+      shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
+      register: join_domain
+      ignore_errors: yes
+      no_log: true
+      
+    - name: Wait for 30 seconds after domain join
+      pause:
+        seconds: 30 
+          
+    - name: Print server join domain error message if any
+      debug:
+        var: join_domain.stderr_lines
+      when: join_domain.rc != 0
+          
+    - name: Modify SSSD Configuration in RHEL7, 8 and 9
+      copy:
+        src: sssd.conf
+        dest: /etc/sssd/sssd.conf
+        mode: "0600"
+
+    - name: Add cert path to the ldap.conf in RHEL7, 8 and 9
+      lineinfile:
+        path: /etc/openldap/ldap.conf
+        insertafter: BOF
+        line: 'TLS_CACERT      /etc/openldap/certs/wikilab-ca.cer'
+        state: present
+
+    - name: Start and enable oddjobd service
+      service:
+        name: oddjobd.service
+        state: started
+        enabled: yes
+        
+    - name: Copy LDAP CERT
+      copy:
+        src: wikilab-ca.cer
+        dest: /etc/openldap/certs
+        mode: "0655"
+
+    - name: Restart sssd
+      service:
+        name: sssd
+        state: restarted
+      vars:
+        ansible_command_timeout: 30  # 30 seconds timeout for this service restart
+        ansible_timeout: 30          # General timeout
+    
+    - name: Wait for 30 seconds after restarting sssd
+      pause:
+        seconds: 30  
+									   
+			
+			   
+									 
+																															 
+					
+																				   
+					 
+
+    # Verification section
+    - name: Verify domain join configuration
+      block:
+        - name: Verify AD user exists after domain join
+          shell: getent passwd "{{ username }}"
+          register: check_user_after
+          changed_when: False
+          ignore_errors: True
+          
+        - name: Print result ID for AD user
+          debug:
+            msg: >-
+              {% if check_user_after.rc != 0 %}
+              Check failed: AD user "{{ username }}" does not exist on {{ ansible_facts['fqdn'] }}
+              {% else %}
+              Check Pass: AD user "{{ username }}" exists on {{ ansible_facts['fqdn'] }}
+              {% endif %}
+              
+        - name: Verify LDAP port is in use
+          shell: lsof -i:636
+          register: check_ldap_after
+          changed_when: False
+          ignore_errors: True           
+
+        - name: Print result LDAP port is in use
+          debug:
+            msg: >-
+              {% if check_ldap_after.rc != 0 %}
+              Check failed: LDAP port 636 is not listening on {{ ansible_facts['fqdn'] }}
+              {% else %}
+              Check Pass: LDAP port 636 is listening on {{ ansible_facts['fqdn'] }}
+              {% endif %}
+
+    # SSH testing - delegated to control node using sshpass for password auth
+    - name: Test SSH login before blacklisting (delegated to localhost with sshpass)
+      delegate_to: localhost
+      shell: sshpass -p "{{ password }}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ username }}@{{ ansible_host }} echo "SSH login successful"
+      register: ssh_test_before
+      ignore_errors: yes
+      no_log: true
+      
+    - name: Print SSH test result before blacklisting
+      debug:
+        msg: >-
+          {% if ssh_test_before.rc != 0 %}
+          Check failed: Unable to login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }}
+          {% else %}
+          Check Pass: Login as AD user '{{ username }}' on {{ ansible_facts['fqdn'] }} was successful
+          {% endif %}
+
+    # Blacklisting section      
+    - name: Blacklisting all Users
+      shell: realm permit -x "{{ username }}"
+
+    - name: Wait for 10 seconds after blacklisting users
+      pause:
+        seconds: 10
+
+    - name: Blacklisting all Groups
+      shell: realm permit -xg "{{ username }}"
+
+    - name: Wait for 10 seconds after blacklisting groups
+      pause:
+        seconds: 10
+						
+
+    # Test blacklisting with SSH test delegated to localhost using sshpass
+    - name: Test SSH login after blacklisting (delegated to localhost with sshpass)
+      delegate_to: localhost
+      shell: sshpass -p "{{ password }}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ username }}@{{ ansible_host }} echo "SSH login successful"
+      register: ssh_test_after
+      ignore_errors: yes
+      no_log: true
+      
+    - name: Print result of SSH login test after blacklisting
+      debug:
+        msg: "{{ 'All Users are blacklisted successfully - SSH access denied as expected' if ssh_test_after.rc != 0 else 'WARNING: User still has SSH access after blacklisting' }}"
+																															 
+
+    # Final status report
+    - name: Print final result of all checks
+      debug:
+        msg: >-
+          {% if check_user_after.rc == 0 and check_ldap_after.rc == 0 %}
+          Successfully joined server {{ ansible_facts['fqdn'] }} to the domain
+          {% else %}
+          Failed to join server {{ ansible_facts['fqdn'] }} to the domain. Check manually or rerun playbook.
+          {% endif %}
