@@ -1,7 +1,6 @@
 ---
 - name: Detect and Execute RHEL 789 OS-specific tasks
   hosts: all
-			
   gather_facts: yes
   vars:
     domain_name: wikilab.asia
@@ -20,7 +19,6 @@
       ignore_errors: yes
 
   tasks:
-
     - name: Check if running on RHEL 789
       fail:
         msg: "This playbook only runs on RHEL 789 servers."
@@ -106,33 +104,6 @@
       register: check_realmpkg
       failed_when: "'Error: No package realmd available' in check_realmpkg.stdout"
 
-							
-																					
-						   
-						 
-						 
-									   
-
-																  
-			
-											
-							   
-
-																	  
-			
-																	   
-																			   
-
-															  
-		   
-												 
-																				 
-				  
-
-															   
-					 
-																			  
-
     - name: Install realm package along with sssd
       package:
         name: "{{ item }}"
@@ -147,7 +118,6 @@
         - oddjob-mkhomedir
         - samba-common-tools
         - lsof
-				 
 
     - name: Join domain (RHEL 7, 8, 9)
       shell: echo "{{password}}" | realm join {{domain_name}} -U {{username}} --verbose
@@ -200,14 +170,6 @@
     - name: Wait for 30 seconds after restarting sssd
       pause:
         seconds: 30  
-									   
-			
-			   
-									 
-																															 
-					
-																				   
-					 
 
     # Verification section
     - name: Verify domain join configuration
@@ -273,7 +235,6 @@
     - name: Wait for 10 seconds after blacklisting groups
       pause:
         seconds: 10
-						
 
     # Test blacklisting with SSH test delegated to localhost using sshpass
     - name: Test SSH login after blacklisting (delegated to localhost with sshpass)
@@ -286,7 +247,6 @@
     - name: Print result of SSH login test after blacklisting
       debug:
         msg: "{{ 'All Users are blacklisted successfully - SSH access denied as expected' if ssh_test_after.rc != 0 else 'WARNING: User still has SSH access after blacklisting' }}"
-																															 
 
     # Final status report
     - name: Print final result of all checks
